@@ -35,5 +35,8 @@
   },
   "jest": {
     "testEnvironment": "node"
+  },
+  "allowScripts": {
+    "bcrypt": false
   }
 }
