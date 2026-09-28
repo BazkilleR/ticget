@@ -1,5 +1,9 @@
+const jwt = require('jsonwebtoken');
+const { ReceiveMessageCommand, DeleteMessageBatchCommand } = require('@aws-sdk/client-sqs');
+const config = require('../src/config');
 const { pool } = require('../src/db');
 const { redis } = require('../src/redis');
+const { sqs } = require('../src/sqs');
 
 // users cascades to bookings; events/zones are left for the tests that need them.
 async function resetUsers() {
@@ -17,7 +21,79 @@ async function flushCache() {
 }
 
 async function closeConnections() {
+  sqs.destroy();
   await Promise.allSettled([pool.end(), redis.quit()]);
 }
 
-module.exports = { resetUsers, resetEvents, flushCache, closeConnections };
+// ---- fixtures -------------------------------------------------------------------------------------------
+
+// Intervals are relative to now() so fixtures never go stale, e.g. insertEvent('X', '30 days').
+async function insertEvent(name, startsIn, saleOpensIn = '-1 day') {
+  const { rows } = await pool.query(
+    `INSERT INTO events (name, venue, starts_at, sale_opens_at)
+     VALUES ($1, 'Test Venue', now() + $2::interval, now() + $3::interval)
+     RETURNING id`,
+    [name, startsIn, saleOpensIn],
+  );
+  return rows[0].id;
+}
+
+async function insertZone(eventId, name, { price = 1000, capacity = 10, reserved = 0 } = {}) {
+  const { rows } = await pool.query(
+    `INSERT INTO zones (event_id, name, price, capacity, reserved)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+    [eventId, name, price, capacity, reserved],
+  );
+  return rows[0].id;
+}
+
+// Inserts a user directly and signs a token for it, skipping bcrypt so tests stay fast.
+async function createUser(username) {
+  const { rows } = await pool.query(
+    `INSERT INTO users (username, password_hash) VALUES ($1, 'not-a-real-hash') RETURNING id`,
+    [username],
+  );
+  const userId = rows[0].id;
+  const token = jwt.sign({}, config.jwtSecret, { algorithm: 'HS256', subject: userId, expiresIn: '1h' });
+  return { userId, token };
+}
+
+// ---- SQS (test queue, see setup-env.js) ------------------------------------------------------------------
+
+// Receives and deletes every message currently in the queue. Returns them with parsed bodies.
+async function drainQueue({ waitSeconds = 0 } = {}) {
+  const received = [];
+  for (;;) {
+    const res = await sqs.send(
+      new ReceiveMessageCommand({
+        QueueUrl: config.sqsBookingQueueUrl,
+        MaxNumberOfMessages: 10,
+        WaitTimeSeconds: received.length ? 0 : waitSeconds,
+        AttributeNames: ['All'],
+      }),
+    );
+    const messages = res.Messages || [];
+    if (messages.length === 0) return received;
+
+    await sqs.send(
+      new DeleteMessageBatchCommand({
+        QueueUrl: config.sqsBookingQueueUrl,
+        Entries: messages.map((m, i) => ({ Id: String(i), ReceiptHandle: m.ReceiptHandle })),
+      }),
+    );
+    for (const m of messages) {
+      received.push({ body: JSON.parse(m.Body), attributes: m.Attributes });
+    }
+  }
+}
+
+module.exports = {
+  resetUsers,
+  resetEvents,
+  flushCache,
+  closeConnections,
+  insertEvent,
+  insertZone,
+  createUser,
+  drainQueue,
+};
