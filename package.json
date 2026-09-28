@@ -34,7 +34,12 @@
     "supertest": "^7.0.0"
   },
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/setup-env.js"
+    ],
+    "globalSetup": "<rootDir>/tests/global-setup.js",
+    "testTimeout": 20000
   },
   "allowScripts": {
     "bcrypt": false

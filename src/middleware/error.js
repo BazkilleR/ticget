@@ -8,6 +8,9 @@ class HttpError extends Error {
   }
 }
 
+// Express 4 does not forward rejected promises to the error handler; wrap async route handlers with this.
+const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
 function notFound(req, res) {
   res.status(404).json({ error: 'not_found', message: 'Route not found' });
 }
@@ -27,4 +30,4 @@ function errorHandler(err, req, res, next) {
   return res.status(500).json({ error: 'internal_error', message: 'Internal server error' });
 }
 
-module.exports = { HttpError, notFound, errorHandler };
+module.exports = { HttpError, asyncHandler, notFound, errorHandler };

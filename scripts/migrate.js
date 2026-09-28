@@ -51,10 +51,14 @@ async function migrate() {
   }
 }
 
-migrate()
-  .then(() => pool.end())
-  .catch(async (err) => {
-    logger.error({ err }, 'migrate: failed');
-    await pool.end();
-    process.exit(1);
-  });
+if (require.main === module) {
+  migrate()
+    .then(() => pool.end())
+    .catch(async (err) => {
+      logger.error({ err }, 'migrate: failed');
+      await pool.end();
+      process.exit(1);
+    });
+}
+
+module.exports = { migrate };

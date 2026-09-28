@@ -2,6 +2,7 @@ const express = require('express');
 const pinoHttp = require('pino-http');
 const logger = require('./logger');
 const healthRouter = require('./routes/health');
+const authRouter = require('./routes/auth');
 const { notFound, errorHandler } = require('./middleware/error');
 
 function createApp() {
@@ -18,6 +19,7 @@ function createApp() {
   app.use(express.json({ limit: '10kb' }));
 
   app.use('/health', healthRouter);
+  app.use('/auth', authRouter);
 
   app.use(notFound);
   app.use(errorHandler);
