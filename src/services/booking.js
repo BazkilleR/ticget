@@ -94,6 +94,30 @@ async function listMyBookings(userId) {
   return rows;
 }
 
+// Mock payment. The WHERE clause is the whole rule: only the owner, only while PENDING, only before the hold
+// expires. zones.reserved does not change, because PENDING seats were already counted.
+async function payBooking(userId, bookingId) {
+  const { rowCount } = await pool.query(
+    `UPDATE bookings SET status = 'CONFIRMED', updated_at = now()
+      WHERE id = $1 AND user_id = $2 AND status = 'PENDING' AND expires_at > now()`,
+    [bookingId, userId],
+  );
+  if (rowCount === 1) {
+    logger.info({ bookingId }, 'booking confirmed');
+    return { bookingId, status: 'CONFIRMED' };
+  }
+
+  // A retried pay request (e.g. the first response was lost) should not look like a failure.
+  const { rows } = await pool.query('SELECT status FROM bookings WHERE id = $1 AND user_id = $2', [
+    bookingId,
+    userId,
+  ]);
+  if (rows[0] && rows[0].status === 'CONFIRMED') return { bookingId, status: 'CONFIRMED' };
+
+  // Unknown, someone else's, not processed yet, FAILED, or expired: all the same answer.
+  throw new HttpError(409, 'booking_not_payable', 'Booking cannot be paid: not found, failed, or expired');
+}
+
 // ---------------------------------------------------------------------------------------------------------
 // Worker side: process one queued booking request. Everything happens in a single transaction, so a crash
 // or error at any point leaves no partial state and the message can simply be retried.
@@ -110,6 +134,28 @@ const messageSchema = z.object({
 });
 
 const PG_UNIQUE_VIOLATION = '23505';
+
+// Marks this zone's expired PENDING holds as EXPIRED and gives their seats back, in one statement so the
+// status change and the quota change can never get out of step. Must run inside the caller's transaction.
+// Shared by the worker (step 2) and the cleanup job, so both release holds exactly the same way.
+// Returns the number of tickets released.
+async function releaseExpired(client, zoneId) {
+  const { rows } = await client.query(
+    `WITH expired AS (
+       UPDATE bookings SET status = 'EXPIRED', updated_at = now()
+        WHERE zone_id = $1 AND status = 'PENDING' AND expires_at < now()
+       RETURNING quantity
+     ), released AS (
+       SELECT COALESCE(SUM(quantity), 0)::int AS qty FROM expired
+     )
+     UPDATE zones
+        SET reserved = reserved - (SELECT qty FROM released)
+      WHERE id = $1
+     RETURNING (SELECT qty FROM released) AS released`,
+    [zoneId],
+  );
+  return rows[0] ? rows[0].released : 0;
+}
 
 // Returns { bookingId, status, failReason?, duplicate? }. Throws on anything unexpected; the caller must then
 // leave the message on the queue so SQS redelivers it (and eventually moves it to the DLQ).
@@ -140,17 +186,7 @@ async function processBooking(rawMessage) {
     }
 
     // (2) Release expired holds in this zone, so their seats are available right now (rule 6).
-    await client.query(
-      `WITH expired AS (
-         UPDATE bookings SET status = 'EXPIRED', updated_at = now()
-          WHERE zone_id = $1 AND status = 'PENDING' AND expires_at < now()
-         RETURNING quantity
-       )
-       UPDATE zones
-          SET reserved = reserved - COALESCE((SELECT SUM(quantity) FROM expired), 0)
-        WHERE id = $1`,
-      [zoneId],
-    );
+    await releaseExpired(client, zoneId);
 
     // (3) Per-user limit across the whole event: live PENDING + CONFIRMED.
     const held = await client.query(
@@ -187,7 +223,7 @@ async function processBooking(rawMessage) {
     } else {
       await client.query(
         `INSERT INTO bookings (id, request_id, user_id, event_id, zone_id, quantity, status, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', now() + make_interval(secs => $7 * 60))`,
+         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', now() + make_interval(secs => $7::float8 * 60))`,
         [bookingId, requestId, userId, eventId, zoneId, quantity, config.bookingHoldMinutes],
       );
       result = { bookingId, status: 'PENDING' };
@@ -212,4 +248,11 @@ async function processBooking(rawMessage) {
   return result;
 }
 
-module.exports = { requestBooking, getBooking, listMyBookings, processBooking };
+module.exports = {
+  requestBooking,
+  getBooking,
+  listMyBookings,
+  payBooking,
+  processBooking,
+  releaseExpired,
+};
