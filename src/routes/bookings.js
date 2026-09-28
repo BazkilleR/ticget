@@ -29,6 +29,10 @@ router.get('/bookings/:id', requireAuth, validate({ params: bookingParams }), as
   res.json(await bookingService.getBooking(req.userId, req.params.id));
 }));
 
+router.post('/bookings/:id/pay', requireAuth, validate({ params: bookingParams }), asyncHandler(async (req, res) => {
+  res.json(await bookingService.payBooking(req.userId, req.params.id));
+}));
+
 router.get('/me/bookings', requireAuth, asyncHandler(async (req, res) => {
   res.json(await bookingService.listMyBookings(req.userId));
 }));

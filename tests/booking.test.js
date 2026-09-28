@@ -91,6 +91,22 @@ describe('processBooking', () => {
     expect(holdMs).toBeCloseTo(config.bookingHoldMinutes * 60_000, -3);
   });
 
+  test('supports a fractional BOOKING_HOLD_MINUTES (e.g. 0.1 = 6s, used to test expiry quickly)', async () => {
+    const zoneId = await insertZone(eventId, 'GA', { capacity: 10 });
+    const alice = await createUser('alice');
+    const msg = message(alice.userId, zoneId, 1);
+    const original = config.bookingHoldMinutes;
+    config.bookingHoldMinutes = 0.1;
+    try {
+      expect((await processBooking(msg)).status).toBe('PENDING');
+    } finally {
+      config.bookingHoldMinutes = original;
+    }
+
+    const row = await bookingRow(msg.bookingId);
+    expect(row.expires_at.getTime() - row.created_at.getTime()).toBeCloseTo(6_000, -3);
+  });
+
   test('fills the 5-seat zone, then the next request is FAILED / SOLD_OUT', async () => {
     const vip = await insertZone(eventId, 'VIP', { capacity: 5 });
     const users = await Promise.all(['u1', 'u2', 'u3'].map(createUser));
