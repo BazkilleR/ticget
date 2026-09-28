@@ -2,28 +2,16 @@ const request = require('supertest');
 const { createApp } = require('../src/app');
 const { pool } = require('../src/db');
 const { redis } = require('../src/redis');
-const { resetUsers, resetEvents, flushCache, closeConnections } = require('./helpers');
+const {
+  resetUsers,
+  resetEvents,
+  flushCache,
+  closeConnections,
+  insertEvent,
+  insertZone,
+} = require('./helpers');
 
 const app = createApp();
-
-async function insertEvent(name, startsIn, saleOpensIn = '-1 day') {
-  const { rows } = await pool.query(
-    `INSERT INTO events (name, venue, starts_at, sale_opens_at)
-     VALUES ($1, 'Test Venue', now() + $2::interval, now() + $3::interval)
-     RETURNING id`,
-    [name, startsIn, saleOpensIn],
-  );
-  return rows[0].id;
-}
-
-async function insertZone(eventId, name, { price = 1000, capacity = 10, reserved = 0 } = {}) {
-  const { rows } = await pool.query(
-    `INSERT INTO zones (event_id, name, price, capacity, reserved)
-     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [eventId, name, price, capacity, reserved],
-  );
-  return rows[0].id;
-}
 
 beforeEach(async () => {
   await resetUsers();

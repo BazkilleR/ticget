@@ -5,6 +5,13 @@ set -euo pipefail
 
 REGION=ap-southeast-1
 
+# Separate queue for jest, so test messages never reach a dev worker polling booking-queue.fifo.
+# Created first: the compose healthcheck waits for booking-queue.fifo, so both exist once it passes.
+awslocal sqs create-queue \
+  --region "$REGION" \
+  --queue-name booking-queue-test.fifo \
+  --attributes FifoQueue=true,ContentBasedDeduplication=false
+
 DLQ_URL=$(awslocal sqs create-queue \
   --region "$REGION" \
   --queue-name booking-queue-dlq.fifo \
