@@ -1,0 +1,27 @@
+meta {
+  name: Get booking
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/bookings/{{bookingId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  // Give the worker a moment to process the booking queued by the previous request.
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+}
+
+tests {
+  test("200; PENDING once the worker has run (QUEUED before, FAILED if sold out)", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(["QUEUED", "PENDING", "FAILED"]).to.include(res.getBody().status);
+  });
+}

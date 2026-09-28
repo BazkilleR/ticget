@@ -1,0 +1,19 @@
+meta {
+  name: List zones
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/events/{{eventId}}/zones
+  body: none
+  auth: none
+}
+
+tests {
+  test("200 with zones and availability", function () {
+    expect(res.getStatus()).to.equal(200);
+    const zone = res.getBody()[0];
+    expect(zone).to.have.keys("zoneId", "name", "price", "available");
+  });
+}
