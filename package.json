@@ -12,6 +12,7 @@
     "start:worker": "node src/worker.js",
     "dev:api": "nodemon --watch src src/api.js",
     "dev:worker": "nodemon --watch src src/worker.js",
+    "expire": "node src/jobs/expire.js",
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "test": "jest --runInBand"
