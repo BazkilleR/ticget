@@ -3,6 +3,7 @@ const pinoHttp = require('pino-http');
 const logger = require('./logger');
 const healthRouter = require('./routes/health');
 const authRouter = require('./routes/auth');
+const eventsRouter = require('./routes/events');
 const { notFound, errorHandler } = require('./middleware/error');
 
 function createApp() {
@@ -20,6 +21,7 @@ function createApp() {
 
   app.use('/health', healthRouter);
   app.use('/auth', authRouter);
+  app.use('/events', eventsRouter);
 
   app.use(notFound);
   app.use(errorHandler);
