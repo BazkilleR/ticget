@@ -12,3 +12,13 @@ if (process.env.TEST_DATABASE_URL) {
   url.pathname = '/tickets_test';
   process.env.DATABASE_URL = url.toString();
 }
+
+// Same idea for Redis: logical DB 1, so cache keys like event:1:zones never collide with the dev API's
+// and tests can FLUSHDB freely.
+if (process.env.TEST_REDIS_URL) {
+  process.env.REDIS_URL = process.env.TEST_REDIS_URL;
+} else if (process.env.REDIS_URL) {
+  const url = new URL(process.env.REDIS_URL);
+  url.pathname = '/1';
+  process.env.REDIS_URL = url.toString();
+}
