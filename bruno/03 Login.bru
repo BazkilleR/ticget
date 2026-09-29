@@ -1,0 +1,32 @@
+meta {
+  name: Login
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "{{username}}",
+    "password": "{{password}}"
+  }
+}
+
+script:post-response {
+  // Saved for every request that needs "Authorization: Bearer".
+  if (res.getStatus() === 200) {
+    bru.setVar("token", res.getBody().token);
+  }
+}
+
+tests {
+  test("200 with a token", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().token).to.be.a("string");
+  });
+}

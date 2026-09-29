@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Ticket Booking",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

@@ -1,0 +1,22 @@
+meta {
+  name: Pay booking
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/bookings/{{bookingId}}/pay
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("200 CONFIRMED (409 booking_not_payable if expired, failed or not processed yet)", function () {
+    expect([200, 409]).to.include(res.getStatus());
+    if (res.getStatus() === 200) expect(res.getBody().status).to.equal("CONFIRMED");
+  });
+}

@@ -1,0 +1,43 @@
+meta {
+  name: Create booking
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/bookings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "eventId": {{eventId}},
+    "zoneId": {{zoneId}},
+    "quantity": {{quantity}},
+    "requestId": "{{requestId}}"
+  }
+}
+
+script:pre-request {
+  // A fresh idempotency key per booking. Resend the same requestId to test duplicate handling.
+  const { v4: uuidv4 } = require("uuid");
+  bru.setVar("requestId", uuidv4());
+}
+
+script:post-response {
+  if (res.getStatus() === 202) {
+    bru.setVar("bookingId", res.getBody().bookingId);
+  }
+}
+
+tests {
+  test("202 QUEUED", function () {
+    expect(res.getStatus()).to.equal(202);
+    expect(res.getBody().status).to.equal("QUEUED");
+  });
+}

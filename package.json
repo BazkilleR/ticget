@@ -15,7 +15,10 @@
     "expire": "node src/jobs/expire.js",
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "load:prepare": "node load/prepare.js",
+    "load:run": "docker run --rm -i --network host -v \"$PWD/load:/load\" -w /load grafana/k6 run booking-rush.js",
+    "load:verify": "node load/verify.js"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.700.0",
