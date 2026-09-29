@@ -15,7 +15,7 @@ const rush = JSON.parse(open('./.data/rush.json'));
 // SharedArray: one copy of the tokens for all VUs instead of one per VU.
 const tokens = new SharedArray('tokens', () => JSON.parse(open('./.data/tokens.json')));
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
+const BASE_URL = (__ENV.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
 const POLL_TIMEOUT_S = Number(__ENV.POLL_TIMEOUT_S || 90);
 
 const outcomes = {

@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.*
+.git
+.github
+coverage
+tests
+load
+bruno
+infra
+*.log
