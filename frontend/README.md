@@ -30,13 +30,15 @@ One-time setup in the Amplify console:
 1. **Create app → GitHub** and pick this repo and the branch to deploy (e.g. `main`).
 2. Tick **"My app is a monorepo"** and set the root directory to `frontend`. Amplify picks up
    `amplify.yml` from the repo root. Make sure the env var `AMPLIFY_MONOREPO_APP_ROOT=frontend` is set.
-3. Region: use the same region as the backend if Amplify Hosting is available there. If not, use
-   `ap-southeast-1`. The UI is served from CloudFront edges either way, and the proxy works across regions.
+3. Region: **`ap-southeast-1` (Singapore)**. Switch region at the top right of the console before you
+   create the app. Amplify Hosting is not offered in `ap-southeast-7` (Thailand), where the backend runs.
+   Singapore is the closest region that has it. Visitors get the UI from CloudFront edges either way, and
+   the `/api` proxy works across regions.
 
 After the backend is deployed (and again after every fresh deploy, since the API Gateway URL changes):
 
 ```bash
-AMPLIFY_APP_ID=<app id> npm run aws:amplify-rewrites          # add AMPLIFY_REGION=... if it differs
+AMPLIFY_APP_ID=<app id> npm run aws:amplify-rewrites   # app in another region: add AMPLIFY_REGION=...
 ```
 
 This sets two rewrite rules, in this order:
