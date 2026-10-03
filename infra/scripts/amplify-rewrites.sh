@@ -3,12 +3,14 @@
 # the stack, everything else that is not a static file falls back to index.html for client-side routing.
 # Run again after every fresh `npm run aws:deploy`, because a new stack gets a new API Gateway URL.
 #   AMPLIFY_APP_ID=d1abc2xyz npm run aws:amplify-rewrites
-#   AMPLIFY_REGION=ap-southeast-1 ...   if the Amplify app lives in another region than the stack
+#   AMPLIFY_REGION=us-east-1 ...   if the Amplify app is not in Singapore
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
 : "${AMPLIFY_APP_ID:?set AMPLIFY_APP_ID (Amplify console > App settings > General)}"
-AMPLIFY_REGION="${AMPLIFY_REGION:-$REGION}"
+# Amplify Hosting is not offered in ap-southeast-7 (Thailand), so the app lives in Singapore, the closest region
+# that has it. Visitors are served from CloudFront edges either way.
+AMPLIFY_REGION="${AMPLIFY_REGION:-ap-southeast-1}"
 
 API_URL="$(output ApiUrl)"
 if [[ -z "$API_URL" || "$API_URL" == "None" ]]; then
