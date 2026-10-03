@@ -9,3 +9,5 @@ load
 bruno
 infra
 *.log
+frontend
+amplify.yml

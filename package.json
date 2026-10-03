@@ -26,7 +26,9 @@
     "aws:destroy": "bash infra/scripts/destroy.sh",
     "aws:tunnel": "bash infra/scripts/tunnel.sh",
     "aws:ssh": "bash infra/scripts/tunnel.sh shell",
-    "aws:env": "bash infra/scripts/aws-env.sh"
+    "aws:env": "bash infra/scripts/aws-env.sh",
+    "aws:amplify-rewrites": "bash infra/scripts/amplify-rewrites.sh",
+    "dev:web": "npm --prefix frontend run dev"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.1142.0",
