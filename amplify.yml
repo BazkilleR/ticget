@@ -1,0 +1,22 @@
+# AWS Amplify Hosting build spec. Only the web UI in frontend/ is built here; the backend runs on EC2 (infra/).
+# Amplify app settings that are NOT in this file (set in the console or with `aws amplify update-app`):
+#   - env AMPLIFY_MONOREPO_APP_ROOT=frontend
+#   - rewrite /api/<*> -> <ApiUrl>/<*> (200) and the SPA fallback, see frontend/README.md
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*

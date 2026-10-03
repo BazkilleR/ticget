@@ -95,7 +95,11 @@ ticket-backend/
 │  └─ booking.test.js
 ├─ load/
 │  └─ booking-rush.js           # k6 script
-└─ bruno/ หรือ postman/         # collection สำหรับทดสอบด้วยมือ
+├─ bruno/ หรือ postman/         # collection สำหรับทดสอบด้วยมือ
+├─ amplify.yml                  # build spec ของ Amplify Hosting (appRoot: frontend)
+└─ frontend/                    # React SPA (Vite) มี package.json ของตัวเอง เรียก API ผ่าน /api/* เสมอ
+   ├─ vite.config.js            # dev proxy /api → localhost:3000
+   └─ src/ api/ auth/ pages/ components/
 ```
 
 ---
@@ -349,6 +353,13 @@ MAX_TICKETS_PER_USER=4
 - IaC (AWS CDK หรือ Terraform): VPC 2 AZ, RDS PostgreSQL, ElastiCache Redis, SQS FIFO + DLQ, ALB (internal) + EC2 ASG สำหรับ API, EC2 ASG สำหรับ worker (scale ตามจำนวน message ในคิว), API Gateway + VPC Link, Lambda + EventBridge Scheduler สำหรับ cleanup, Secrets Manager, VPC Endpoints สำหรับ SQS และ Secrets Manager
 - ตั้ง AWS Budget alert ก่อน deploy
 - ✅ เสร็จเมื่อ: รัน integration test และ load test กับ URL บน AWS แล้วผ่าน
+
+### เฟส 9: Frontend (Vite + React) บน Amplify Hosting
+- `frontend/` เป็น SPA: login/register, รายการ event, เลือกโซน + จำนวน, หน้าสถานะการจอง (poll จนพ้น `QUEUED`, นับถอยหลัง, ปุ่มจ่าย mock), การจองของฉัน
+- เรียก API แบบ same-origin ที่ `/api/*` เสมอ backend ไม่ต้องเปิด CORS: local ใช้ Vite proxy ส่วนบน Amplify ใช้ rewrite 200 ไปที่ `ApiUrl` (`npm run aws:amplify-rewrites` ต้องรันใหม่ทุกครั้งที่ deploy stack ใหม่)
+- `requestId` สร้างครั้งเดียวต่อการจอง 1 ครั้ง ถ้า retry ด้วยโซน/จำนวนเดิมให้ใช้ค่าเดิม (idempotency)
+- token เก็บใน `sessionStorage` และไม่ส่ง `userId` ไปกับ request
+- ✅ เสร็จเมื่อ: `npm --prefix frontend run build` ผ่าน ไล่ flow ครบบน local (PENDING → CONFIRMED, SOLD_OUT, USER_LIMIT, หมดเวลาแล้วจ่ายได้ 409) และบน Amplify `/api/health` กับ deep link ใช้งานได้
 
 ---
 
