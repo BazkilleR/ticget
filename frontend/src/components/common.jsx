@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
-import { STATUS_LABELS } from '../format';
+import { STATUS_LABELS, dateParts } from '../format';
 
 export function ProtectedRoute({ children }) {
   const { token } = useAuth();
@@ -25,9 +25,91 @@ export function StatusBadge({ status }) {
 
 export function Spinner({ label = 'กำลังโหลด…' }) {
   return (
-    <p className="muted spinner" role="status">
+    <p className="spinner" role="status">
+      <span className="spinner-ring" aria-hidden="true" />
       {label}
     </p>
+  );
+}
+
+const ICONS = {
+  calendar: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+  clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
+  pin: 'M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  ticket: 'M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4zM15 7v10',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
+  check: 'M5 12l5 5L20 7',
+  minus: 'M5 12h14',
+  plus: 'M12 5v14M5 12h14',
+  back: 'M15 18l-6-6 6-6',
+  logout: 'M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11',
+};
+
+export function Icon({ name, size = 18 }) {
+  return (
+    <svg
+      className="icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={ICONS[name]} />
+    </svg>
+  );
+}
+
+// Events have no artwork in the API, so each one gets a generated poster whose colours are picked from its id
+// (stable across pages and reloads).
+const POSTER_THEMES = [
+  ['#ff3d4a', '#4a0614'],
+  ['#ff9a1f', '#6b1250'],
+  ['#2f8cff', '#121a52'],
+  ['#14c79a', '#08334a'],
+  ['#b45cff', '#1f0a3d'],
+  ['#ffc21a', '#7c1d05'],
+];
+
+export function Poster({ event, variant = 'card' }) {
+  const [from, to] = POSTER_THEMES[Math.abs(Number(event.id) || 0) % POSTER_THEMES.length];
+  const date = event.startsAt ? dateParts(event.startsAt) : null;
+  return (
+    <div className={`poster poster-${variant}`} style={{ '--from': from, '--to': to }} aria-hidden="true">
+      <span className="poster-glow" />
+      <span className="poster-rings" />
+      {date && (
+        <span className="poster-date">
+          <b>{date.day}</b>
+          {date.month}
+        </span>
+      )}
+      <span className="poster-title">{event.name}</span>
+      {event.venue && <span className="poster-venue">{event.venue}</span>}
+    </div>
+  );
+}
+
+const STEPS = ['เลือกโซน', 'ตรวจสอบที่นั่ง', 'ชำระเงิน', 'รับบัตร'];
+
+// current: index of the active step. failed: the active step ended badly (sold out, expired).
+export function Steps({ current, failed = false }) {
+  return (
+    <ol className="steps">
+      {STEPS.map((label, i) => {
+        const state = i < current ? 'done' : i === current ? (failed ? 'failed' : 'active') : 'todo';
+        return (
+          <li key={label} className={`step step-${state}`} aria-current={i === current ? 'step' : undefined}>
+            <span className="step-dot">{state === 'done' ? <Icon name="check" size={14} /> : i + 1}</span>
+            <span className="step-label">{label}</span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

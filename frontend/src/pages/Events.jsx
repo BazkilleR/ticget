@@ -1,8 +1,72 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { request, errorMessage } from '../api/client';
-import { ErrorBanner, Spinner } from '../components/common';
-import { formatDateTime } from '../format';
+import { ErrorBanner, Icon, Poster, Spinner } from '../components/common';
+import { formatDate, formatDateTime, formatTime, isSaleOpen } from '../format';
+
+function SaleChip({ event }) {
+  return isSaleOpen(event) ? (
+    <span className="chip chip-open">เปิดขายแล้ว</span>
+  ) : (
+    <span className="chip chip-soon">เปิดขาย {formatDateTime(event.saleOpensAt)}</span>
+  );
+}
+
+function Hero({ event }) {
+  return (
+    <section className="hero">
+      <div className="wrap hero-inner">
+        <Link to={`/events/${event.id}`} className="hero-poster">
+          <Poster event={event} variant="hero" />
+        </Link>
+        <div className="hero-info">
+          <SaleChip event={event} />
+          <h1>{event.name}</h1>
+          <ul className="meta meta-light">
+            <li>
+              <Icon name="calendar" />
+              {formatDate(event.startsAt)}
+            </li>
+            <li>
+              <Icon name="clock" />
+              {formatTime(event.startsAt)}
+            </li>
+            <li>
+              <Icon name="pin" />
+              {event.venue}
+            </li>
+          </ul>
+          <Link to={`/events/${event.id}`} className="btn btn-primary btn-lg">
+            <Icon name="ticket" />
+            {isSaleOpen(event) ? 'ซื้อบัตร' : 'ดูรายละเอียด'}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EventCard({ event }) {
+  const open = isSaleOpen(event);
+  return (
+    <li>
+      <Link to={`/events/${event.id}`} className="event-card">
+        <Poster event={event} />
+        <div className="event-card-body">
+          <p className="event-card-date">{formatDate(event.startsAt)}</p>
+          <h3>{event.name}</h3>
+          <p className="event-card-venue">
+            <Icon name="pin" size={15} />
+            {event.venue}
+          </p>
+          <span className={`btn btn-block ${open ? 'btn-primary' : 'btn-outline'}`}>
+            {open ? 'ซื้อบัตร' : `เปิดขาย ${formatDateTime(event.saleOpensAt)}`}
+          </span>
+        </div>
+      </Link>
+    </li>
+  );
+}
 
 export default function Events() {
   const [events, setEvents] = useState(null);
@@ -18,29 +82,22 @@ export default function Events() {
     return () => controller.abort();
   }, []);
 
+  const featured = events?.find(isSaleOpen) || events?.[0];
+
   return (
-    <section>
-      <h1>อีเวนต์ที่กำลังจะมาถึง</h1>
-      <ErrorBanner message={error} />
-      {!events && !error && <Spinner />}
-      {events?.length === 0 && <p className="empty muted">ยังไม่มีอีเวนต์</p>}
-      <ul className="grid">
-        {events?.map((event) => {
-          const saleOpen = new Date(event.saleOpensAt) <= new Date();
-          return (
-            <li key={event.id}>
-              <Link to={`/events/${event.id}`} className="card card-link event-card">
-                <h2>{event.name}</h2>
-                <p className="muted">{event.venue}</p>
-                <p>{formatDateTime(event.startsAt)}</p>
-                <span className={`badge ${saleOpen ? 'badge-confirmed' : 'badge-queued'}`}>
-                  {saleOpen ? 'เปิดขายแล้ว' : `เปิดขาย ${formatDateTime(event.saleOpensAt)}`}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <>
+      {featured && <Hero event={featured} />}
+      <section className="wrap section">
+        <h2 className="section-title">อีเวนต์ทั้งหมด</h2>
+        <ErrorBanner message={error} />
+        {!events && !error && <Spinner />}
+        {events?.length === 0 && <p className="empty">ยังไม่มีอีเวนต์ที่กำลังจะมาถึง</p>}
+        <ul className="event-grid">
+          {events?.map((event) => (
+            <EventCard key={event.id} event={event} />
+          ))}
+        </ul>
+      </section>
+    </>
   );
 }

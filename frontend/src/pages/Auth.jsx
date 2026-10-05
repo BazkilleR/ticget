@@ -25,42 +25,51 @@ function useAuthForm(onSubmit) {
   return { username, setUsername, password, setPassword, error, busy, handleSubmit };
 }
 
-function AuthCard({ title, form, submitLabel, footer, register = false }) {
+function AuthCard({ form, submitLabel, returnTo, register = false }) {
   return (
-    <section className="card auth-card">
-      <h1>{title}</h1>
-      <form onSubmit={form.handleSubmit} className="stack">
-        <label className="field">
-          <span>ชื่อผู้ใช้</span>
-          <input
-            name="username"
-            autoComplete="username"
-            required
-            {...(register && { minLength: 3, maxLength: 32, pattern: '[A-Za-z0-9_.\\-]+' })}
-            value={form.username}
-            onChange={(e) => form.setUsername(e.target.value)}
-          />
-          {register && <small className="muted">3–32 ตัว ใช้ได้เฉพาะ a-z, 0-9, _ . -</small>}
-        </label>
-        <label className="field">
-          <span>รหัสผ่าน</span>
-          <input
-            name="password"
-            type="password"
-            autoComplete={register ? 'new-password' : 'current-password'}
-            required
-            {...(register && { minLength: 8 })}
-            value={form.password}
-            onChange={(e) => form.setPassword(e.target.value)}
-          />
-          {register && <small className="muted">อย่างน้อย 8 ตัวอักษร</small>}
-        </label>
-        <ErrorBanner message={form.error} />
-        <button type="submit" className="button" disabled={form.busy}>
-          {form.busy ? 'กำลังดำเนินการ…' : submitLabel}
-        </button>
-      </form>
-      <p className="muted">{footer}</p>
+    <section className="wrap section">
+      <div className="auth-card">
+        <nav className="auth-tabs">
+          <Link to="/login" state={{ from: returnTo }} className={register ? '' : 'active'} replace>
+            เข้าสู่ระบบ
+          </Link>
+          <Link to="/register" state={{ from: returnTo }} className={register ? 'active' : ''} replace>
+            สมัครสมาชิก
+          </Link>
+        </nav>
+        <form onSubmit={form.handleSubmit} className="auth-form">
+          <h1 className="sr-only">{register ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</h1>
+          <label className="field">
+            <span>ชื่อผู้ใช้</span>
+            <input
+              name="username"
+              autoComplete="username"
+              required
+              {...(register && { minLength: 3, maxLength: 32, pattern: '[A-Za-z0-9_.\\-]+' })}
+              value={form.username}
+              onChange={(e) => form.setUsername(e.target.value)}
+            />
+            {register && <small>3–32 ตัว ใช้ได้เฉพาะ a-z, 0-9, _ . -</small>}
+          </label>
+          <label className="field">
+            <span>รหัสผ่าน</span>
+            <input
+              name="password"
+              type="password"
+              autoComplete={register ? 'new-password' : 'current-password'}
+              required
+              {...(register && { minLength: 8 })}
+              value={form.password}
+              onChange={(e) => form.setPassword(e.target.value)}
+            />
+            {register && <small>อย่างน้อย 8 ตัวอักษร</small>}
+          </label>
+          <ErrorBanner message={form.error} />
+          <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={form.busy}>
+            {form.busy ? 'กำลังดำเนินการ…' : submitLabel}
+          </button>
+        </form>
+      </div>
     </section>
   );
 }
@@ -82,19 +91,7 @@ export function Login() {
 
   if (token) return <Navigate to={returnTo} replace />;
   return (
-    <AuthCard
-      title="เข้าสู่ระบบ"
-      form={form}
-      submitLabel="เข้าสู่ระบบ"
-      footer={
-        <>
-          ยังไม่มีบัญชี?{' '}
-          <Link to="/register" state={{ from: returnTo }}>
-            สมัครสมาชิก
-          </Link>
-        </>
-      }
-    />
+    <AuthCard form={form} submitLabel="เข้าสู่ระบบ" returnTo={returnTo} />
   );
 }
 
@@ -110,19 +107,6 @@ export function Register() {
 
   if (token) return <Navigate to={returnTo} replace />;
   return (
-    <AuthCard
-      register
-      title="สมัครสมาชิก"
-      form={form}
-      submitLabel="สมัครสมาชิก"
-      footer={
-        <>
-          มีบัญชีแล้ว?{' '}
-          <Link to="/login" state={{ from: returnTo }}>
-            เข้าสู่ระบบ
-          </Link>
-        </>
-      }
-    />
+    <AuthCard register form={form} submitLabel="สมัครสมาชิก" returnTo={returnTo} />
   );
 }
