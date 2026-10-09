@@ -16,6 +16,24 @@ export const dateParts = (iso) => {
 
 export const isSaleOpen = (event) => new Date(event.saleOpensAt) <= new Date();
 
+// Admin <input type="datetime-local"> values are Thai wall-clock time whatever time zone the browser is in.
+// Thailand has no daylight saving, so the offset is always +07:00.
+const bangkokParts = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Bangkok',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+export function toBangkokInput(iso) {
+  if (!iso) return '';
+  const p = Object.fromEntries(bangkokParts.formatToParts(new Date(iso)).map((part) => [part.type, part.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+export const fromBangkokInput = (value) => (value ? `${value}:00+07:00` : undefined);
+
 export const STATUS_LABELS = {
   QUEUED: 'อยู่ในคิว',
   PENDING: 'รอชำระเงิน',

@@ -1,12 +1,16 @@
+import { Link } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 
-// Landing page for admins. Event management and the sales dashboard are added in the next phases.
+// Overview tab. The sales dashboard replaces this in a later phase.
 export default function AdminHome() {
   const { username } = useAuth();
   return (
-    <section className="wrap section">
-      <h1 className="section-title">ผู้ดูแลระบบ</h1>
-      <p className="empty">สวัสดี {username} — เมนูจัดการงานแสดงและรายงานยอดขายจะอยู่ที่หน้านี้</p>
-    </section>
+    <div className="panel">
+      <p>สวัสดี {username}</p>
+      <p className="fine-print">แดชบอร์ดยอดขายจะแสดงที่หน้านี้</p>
+      <Link to="/admin/events" className="btn btn-primary">
+        จัดการงานแสดง
+      </Link>
+    </div>
   );
 }

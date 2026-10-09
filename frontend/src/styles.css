@@ -1509,6 +1509,238 @@ textarea:focus {
   box-shadow: 0 0 0 3px var(--brand-soft);
 }
 
+/* ---- Admin ----------------------------------------------------------------------------------------- */
+
+.admin-nav {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 2px solid var(--border);
+  overflow-x: auto;
+}
+
+.admin-nav a {
+  font-family: var(--head-font);
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 0.6rem 1rem;
+  margin-bottom: -2px;
+  border-bottom: 3px solid transparent;
+}
+
+.admin-nav a.active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.admin-form .toolbar {
+  margin-bottom: 0;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.check input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--brand);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.form-grid .span-2 {
+  grid-column: span 2;
+}
+
+textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.form-actions .btn-danger {
+  margin-right: auto;
+}
+
+.btn-danger {
+  background: var(--surface);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+.btn-ghost-dark {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+.btn-ghost-dark:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.panel .table-wrap {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.table th,
+.table td {
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  font-family: var(--head-font);
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.row-muted td {
+  color: var(--muted);
+}
+
+.row-error td {
+  padding-top: 0;
+}
+
+.table-title {
+  display: block;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.table-title:hover {
+  color: var(--brand);
+}
+
+.table-sub {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.table-form input {
+  width: 100%;
+  min-width: 90px;
+  padding: 0.45rem 0.6rem;
+}
+
+.chip-ended {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.sold-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 160px;
+}
+
+.sold-bar-track {
+  display: flex;
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.sold-bar-sold {
+  background: var(--success);
+}
+
+.sold-bar-held {
+  background: var(--warning);
+  opacity: 0.6;
+}
+
+.sold-bar-label {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.add-zone {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.add-zone .banner {
+  grid-column: 1 / -1;
+}
+
 /* ---- Responsive ------------------------------------------------------------------------------------ */
 
 @media (max-width: 900px) {
@@ -1522,6 +1754,15 @@ textarea:focus {
 }
 
 @media (max-width: 680px) {
+  .form-grid,
+  .add-zone {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid .span-2 {
+    grid-column: auto;
+  }
+
   .hero-inner,
   .event-hero-inner {
     grid-template-columns: 1fr;

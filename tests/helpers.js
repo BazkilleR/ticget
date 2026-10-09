@@ -1,3 +1,4 @@
+const { randomUUID } = require('crypto');
 const jwt = require('jsonwebtoken');
 const { ReceiveMessageCommand, DeleteMessageBatchCommand } = require('@aws-sdk/client-sqs');
 const config = require('../src/config');
@@ -47,6 +48,18 @@ async function insertZone(eventId, name, { price = 1000, capacity = 10, reserved
   return rows[0].id;
 }
 
+// Inserts a booking row directly. It does not touch zones.reserved: set that on the zone to match.
+// expiresIn is an interval relative to now(), negative for a hold that has already run out.
+async function insertBooking({ userId, eventId, zoneId, quantity = 1, status = 'PENDING', failReason = null, expiresIn = '10 minutes' }) {
+  const id = randomUUID();
+  await pool.query(
+    `INSERT INTO bookings (id, request_id, user_id, event_id, zone_id, quantity, status, fail_reason, expires_at)
+     VALUES ($1, $1, $2, $3, $4, $5, $6, $7, now() + $8::interval)`,
+    [id, userId, eventId, zoneId, quantity, status, failReason, expiresIn],
+  );
+  return id;
+}
+
 // Inserts a user directly and signs a token for it, skipping bcrypt so tests stay fast.
 async function createUser(username, { role = 'user' } = {}) {
   const { rows } = await pool.query(
@@ -94,6 +107,7 @@ module.exports = {
   closeConnections,
   insertEvent,
   insertZone,
+  insertBooking,
   createUser,
   drainQueue,
 };

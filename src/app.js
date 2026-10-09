@@ -6,6 +6,7 @@ const authRouter = require('./routes/auth');
 const eventsRouter = require('./routes/events');
 const bookingsRouter = require('./routes/bookings');
 const meRouter = require('./routes/me');
+const adminRouter = require('./routes/admin');
 const { notFound, errorHandler } = require('./middleware/error');
 
 function createApp() {
@@ -25,6 +26,7 @@ function createApp() {
   app.use('/auth', authRouter);
   app.use('/events', eventsRouter);
   app.use('/me', meRouter);
+  app.use('/admin', adminRouter);
   // Mounted at the root because its paths are /bookings and /bookings/:id/*.
   app.use(bookingsRouter);
 

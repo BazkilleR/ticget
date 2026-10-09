@@ -7,7 +7,11 @@ import EventZones from './pages/EventZones';
 import BookingStatus from './pages/BookingStatus';
 import MyBookings from './pages/MyBookings';
 import Search from './pages/Search';
+import AdminLayout from './pages/admin/AdminLayout';
 import AdminHome from './pages/admin/AdminHome';
+import AdminEvents from './pages/admin/AdminEvents';
+import AdminEventNew from './pages/admin/AdminEventNew';
+import AdminEventEdit from './pages/admin/AdminEventEdit';
 
 function Logo() {
   return (
@@ -113,10 +117,15 @@ export default function App() {
             path="/admin"
             element={
               <AdminRoute>
-                <AdminHome />
+                <AdminLayout />
               </AdminRoute>
             }
-          />
+          >
+            <Route index element={<AdminHome />} />
+            <Route path="events" element={<AdminEvents />} />
+            <Route path="events/new" element={<AdminEventNew />} />
+            <Route path="events/:id" element={<AdminEventEdit />} />
+          </Route>
           <Route
             path="*"
             element={

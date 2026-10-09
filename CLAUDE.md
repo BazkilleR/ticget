@@ -187,6 +187,23 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 
 ทุก route ใต้ `/admin` ใช้ `requireAuth` + `requireAdmin` (`src/middleware/admin.js`) ซึ่งอ่าน role จาก DB ทุกครั้ง ไม่ใส่ role ใน JWT เพื่อให้ถอดสิทธิ์มีผลทันที ไม่มีสิทธิ์ตอบ `403 forbidden`
 บัญชี admin สร้างได้ทางเดียวคือ `npm run seed` ด้วย env `ADMIN_USERNAME` / `ADMIN_PASSWORD` ไม่มี HTTP route ที่ให้สิทธิ์ admin
+
+| Method | Path | คำอธิบาย |
+|---|---|---|
+| GET | `/admin/events?include=past` | ทุก event พร้อม `zoneCount, capacity, sold, held, bookingCount` |
+| POST | `/admin/events` | `{ name, venue, description?, startsAt, saleOpensAt, zones: [{ name, price, capacity }] }` (1–10 zones) → `201` สร้าง event + zones ใน transaction เดียว |
+| GET | `/admin/events/:id` | event + zones พร้อม `reserved, available, sold, held, bookingCount` |
+| PATCH | `/admin/events/:id` | แก้ฟิลด์ใดก็ได้ของ event, `invalid_schedule` ถ้าวันเปิดขายเลยวันแสดง |
+| DELETE | `/admin/events/:id` | `204` หรือ `409 event_has_bookings` (มี booking แม้แต่ FAILED ก็ลบไม่ได้) |
+| POST | `/admin/events/:id/zones` | เพิ่มโซน, `409 zone_name_taken` |
+| PATCH | `/admin/zones/:id` | แก้ name/price/capacity, ลด capacity ต่ำกว่า reserved ได้ `409 capacity_below_reserved` |
+| DELETE | `/admin/zones/:id` | `204` หรือ `409 zone_has_bookings` |
+
+- วันเวลาต้องมี offset เสมอ (`Z` หรือ `+07:00`)
+- ลด capacity: ใน transaction เดียว `releaseExpired` → `SELECT ... FOR UPDATE` → ตรวจ → `UPDATE` โดยมี `CHECK (reserved <= capacity)` กันอีกชั้น
+- ลบ: พึ่ง foreign key ของ bookings ไม่ตรวจก่อนแล้วค่อยลบ จึงไม่มี race กับ worker
+- เปลี่ยนราคามีผลกับการจองใหม่เท่านั้น
+- ทุกการแก้ไขล้าง `events:list`, `event:{id}`, `event:{id}:zones` และ log `admin_event_change` พร้อม `adminId`
 | POST | `/bookings/:id/pay` | **mock** ชำระเงิน → `CONFIRMED` (ถ้ายังไม่หมดเวลา) |
 
 ---
@@ -195,6 +212,7 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 
 1. **ห้ามรับ `userId` จาก request body** ให้ใช้จาก JWT (`req.userId`) เท่านั้น
 2. **ทุก query ที่อ่านการจองต้องมีเงื่อนไข `user_id`** กันไม่ให้ดูการจองของคนอื่น
+   ข้อยกเว้นเดียว: `src/services/admin*.js` ที่รวมยอดของทุกคน ใช้ได้เฉพาะผ่าน `src/routes/admin` ซึ่งบังคับ `requireAuth` + `requireAdmin` ทั้ง router
 3. **รหัสผ่านเก็บเป็น bcrypt hash (cost 12)** ห้ามเก็บหรือ log รหัสผ่านตรง ๆ
 4. Login ผิดให้ตอบข้อความเดียวกันเสมอ: `invalid_credentials` ไม่บอกว่าผิดที่ username หรือ password
 5. **การตัดโควตาต้องทำใน transaction ด้วย conditional UPDATE** (ดูหัวข้อ Worker) ห้ามใช้วิธี SELECT แล้วค่อย UPDATE แยกกัน
