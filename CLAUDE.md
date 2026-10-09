@@ -152,6 +152,18 @@ CREATE TABLE bookings (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 004_tickets.sql: bookings.paid_at TIMESTAMPTZ และ e-ticket 1 ใบต่อ 1 ที่นั่ง ออกตอนจ่ายเงินใน statement เดียวกับการ CONFIRMED
+CREATE TABLE tickets (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id    UUID NOT NULL REFERENCES bookings(id),
+  seq           INT  NOT NULL CHECK (seq BETWEEN 1 AND 4),
+  code          TEXT UNIQUE NOT NULL,                -- 128 bit สุ่ม (hex 32 ตัว) อยู่ใน QR
+  checked_in_at TIMESTAMPTZ,                         -- ตั้งครั้งเดียวด้วย conditional UPDATE
+  checked_in_by UUID REFERENCES users(id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (booking_id, seq)
+);
+
 CREATE INDEX bookings_zone_pending_idx ON bookings (zone_id, expires_at) WHERE status = 'PENDING';
 CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 ```
@@ -198,13 +210,16 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 | POST | `/admin/events/:id/zones` | เพิ่มโซน, `409 zone_name_taken` |
 | PATCH | `/admin/zones/:id` | แก้ name/price/capacity, ลด capacity ต่ำกว่า reserved ได้ `409 capacity_below_reserved` |
 | DELETE | `/admin/zones/:id` | `204` หรือ `409 zone_has_bookings` |
+| GET | `/admin/tickets/:code` | ดูบัตรก่อนให้เข้างาน (ผู้จอง, โซน, ใบที่, ใช้แล้วหรือยัง) |
+| POST | `/admin/tickets/check-in` | `{ code, eventId }` → `200` หรือ `409 ticket_already_used` / `409 ticket_wrong_event` / `404 ticket_not_found` |
 
 - วันเวลาต้องมี offset เสมอ (`Z` หรือ `+07:00`)
 - ลด capacity: ใน transaction เดียว `releaseExpired` → `SELECT ... FOR UPDATE` → ตรวจ → `UPDATE` โดยมี `CHECK (reserved <= capacity)` กันอีกชั้น
 - ลบ: พึ่ง foreign key ของ bookings ไม่ตรวจก่อนแล้วค่อยลบ จึงไม่มี race กับ worker
 - เปลี่ยนราคามีผลกับการจองใหม่เท่านั้น
 - ทุกการแก้ไขล้าง `events:list`, `event:{id}`, `event:{id}:zones` และ log `admin_event_change` พร้อม `adminId`
-| POST | `/bookings/:id/pay` | **mock** ชำระเงิน → `CONFIRMED` (ถ้ายังไม่หมดเวลา) |
+| POST | `/bookings/:id/pay` | **mock** ชำระเงิน → `CONFIRMED` (ถ้ายังไม่หมดเวลา) และออก e-ticket ตามจำนวนที่นั่ง |
+| GET | `/bookings/:id/tickets` | `{ bookingId, status, quantity, paidAt, event, zone, tickets: [{ ticketId, seq, code, checkedInAt }] }` ว่างจนกว่าจะจ่าย, ของคนอื่นได้ `404 booking_not_found` |
 
 ---
 
@@ -291,6 +306,11 @@ UPDATE bookings SET status = 'CONFIRMED', updated_at = now()
 - 1 แถว → `200 { status: "CONFIRMED" }`
 - 0 แถว → `409 { error: "booking_not_payable" }`
 - `zones.reserved` ไม่ต้องเปลี่ยน เพราะนับไว้ตั้งแต่ PENDING แล้ว
+
+### e-Ticket และตรวจบัตร
+- จ่ายเงินแล้ว CONFIRMED + INSERT tickets ใน statement เดียว (CTE) จ่ายซ้ำหรือจ่ายพร้อมกันไม่ออกบัตรซ้ำ
+- QR เก็บ URL `/admin/check-in?code=<code>` ให้เจ้าหน้าที่สแกนด้วยกล้องมือถือแล้วเปิดหน้าตรวจบัตรได้เลย
+- เข้างาน: `UPDATE tickets ... WHERE code = $1 AND event_id ตรง AND CONFIRMED AND checked_in_at IS NULL` สแกนพร้อมกันหลายประตูผ่านได้ครั้งเดียว
 
 ### Cleanup: `src/jobs/expire.js`
 ทำแบบเดียวกับข้อ ② แต่ทุกโซน แล้วลบ cache ของ event ที่ได้รับผลกระทบ

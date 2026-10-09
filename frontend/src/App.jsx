@@ -7,11 +7,13 @@ import EventZones from './pages/EventZones';
 import BookingStatus from './pages/BookingStatus';
 import MyBookings from './pages/MyBookings';
 import Search from './pages/Search';
+import Tickets from './pages/Tickets';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminHome from './pages/admin/AdminHome';
 import AdminEvents from './pages/admin/AdminEvents';
 import AdminEventNew from './pages/admin/AdminEventNew';
 import AdminEventEdit from './pages/admin/AdminEventEdit';
+import AdminCheckIn from './pages/admin/AdminCheckIn';
 
 function Logo() {
   return (
@@ -106,6 +108,14 @@ export default function App() {
             }
           />
           <Route
+            path="/bookings/:id/tickets"
+            element={
+              <ProtectedRoute>
+                <Tickets />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/me/bookings"
             element={
               <ProtectedRoute>
@@ -125,6 +135,7 @@ export default function App() {
             <Route path="events" element={<AdminEvents />} />
             <Route path="events/new" element={<AdminEventNew />} />
             <Route path="events/:id" element={<AdminEventEdit />} />
+            <Route path="check-in" element={<AdminCheckIn />} />
           </Route>
           <Route
             path="*"

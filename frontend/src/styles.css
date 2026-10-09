@@ -763,7 +763,7 @@ a {
 
 .filter-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.75rem;
 }
 
@@ -1351,6 +1351,168 @@ a {
   margin-top: 1.25rem;
 }
 
+/* ---- e-Ticket -------------------------------------------------------------------------------------- */
+
+.eticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.eticket {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  break-inside: avoid;
+}
+
+.eticket-head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(90deg, var(--ink), var(--ink-2));
+  color: #fff;
+}
+
+.eticket-head .poster-mini {
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.eticket-head h2 {
+  font-size: 1.15rem;
+}
+
+.eticket-head p {
+  color: #c8c8d2;
+  font-size: 0.9rem;
+}
+
+.eticket-body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+
+.eticket-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+  margin: 0;
+  align-content: start;
+}
+
+.eticket-details .span-2 {
+  grid-column: span 2;
+}
+
+.eticket-details dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.eticket-details dd {
+  margin: 0;
+  font-family: var(--head-font);
+  font-weight: 600;
+}
+
+.eticket-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+  border-left: 2px dashed var(--border);
+}
+
+.eticket-qr code,
+.checkin-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  max-width: 168px;
+  text-align: center;
+  word-spacing: 0.15rem;
+}
+
+.ticket-qr img {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.eticket-used .ticket-qr {
+  opacity: 0.25;
+}
+
+.eticket-stamp {
+  padding: 0.6rem 1.25rem;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+}
+
+.booking-item-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--success);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ---- Check-in -------------------------------------------------------------------------------------- */
+
+.checkin {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 640px;
+}
+
+.checkin .panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.checkin-manual {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.checkin-result {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+}
+
+.checkin-result strong {
+  display: block;
+  font-family: var(--head-font);
+  font-size: 1.4rem;
+}
+
+.checkin-ok {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.checkin-code {
+  max-width: none;
+  text-align: left;
+}
+
 /* ---- My bookings ----------------------------------------------------------------------------------- */
 
 .tabs {
@@ -1839,6 +2001,47 @@ textarea {
 
   .booking-item .badge {
     align-self: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .eticket-body {
+    grid-template-columns: 1fr;
+  }
+
+  .eticket-qr {
+    padding-left: 0;
+    padding-top: 1.25rem;
+    border-left: 0;
+    border-top: 2px dashed var(--border);
+  }
+
+  .checkin-manual {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Printing the e-ticket page: just the tickets, one per page if they do not fit. */
+@media print {
+  .site-header,
+  .site-footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body,
+  .site-main {
+    background: #fff;
+  }
+
+  .eticket {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  .eticket-head {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }
 

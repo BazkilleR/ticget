@@ -10,6 +10,7 @@ export default function AdminLayout() {
           ภาพรวม
         </NavLink>
         <NavLink to="/admin/events">งานแสดง</NavLink>
+        <NavLink to="/admin/check-in">ตรวจบัตร</NavLink>
       </nav>
       <Outlet />
     </section>

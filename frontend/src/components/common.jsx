@@ -6,7 +6,7 @@ import { STATUS_LABELS, dateParts } from '../format';
 export function ProtectedRoute({ children }) {
   const { token } = useAuth();
   const location = useLocation();
-  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   return children;
 }
 
@@ -14,7 +14,7 @@ export function ProtectedRoute({ children }) {
 export function AdminRoute({ children }) {
   const { token, isAdmin } = useAuth();
   const location = useLocation();
-  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   if (!isAdmin) {
     return (
       <section className="wrap empty">
@@ -60,6 +60,7 @@ const ICONS = {
   back: 'M15 18l-6-6 6-6',
   logout: 'M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11',
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
+  qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2M14 18h2v2M18 18h2v2h-2z',
 };
 
 export function Icon({ name, size = 18 }) {

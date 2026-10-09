@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { errorMessage } from '../api/client';
 import { useApi } from '../auth/AuthContext';
-import { ErrorBanner, Poster, Spinner, StatusBadge } from '../components/common';
+import { ErrorBanner, Icon, Poster, Spinner, StatusBadge } from '../components/common';
 import { FAIL_REASONS, formatDateTime } from '../format';
 
 const TABS = [
@@ -63,7 +63,10 @@ export default function MyBookings() {
       <ul className="booking-list">
         {shown?.map((b) => (
           <li key={b.bookingId}>
-            <Link to={`/bookings/${b.bookingId}`} className="booking-item">
+            <Link
+              to={b.status === 'CONFIRMED' ? `/bookings/${b.bookingId}/tickets` : `/bookings/${b.bookingId}`}
+              className="booking-item"
+            >
               <Poster event={{ id: b.eventId, name: b.eventName }} variant="mini" />
               <div className="booking-item-body">
                 <strong>{b.eventName}</strong>
@@ -73,6 +76,12 @@ export default function MyBookings() {
                 <span className="fine-print">จองเมื่อ {formatDateTime(b.createdAt)}</span>
                 {b.status === 'FAILED' && b.failReason && (
                   <span className="text-danger">{FAIL_REASONS[b.failReason] || b.failReason}</span>
+                )}
+                {b.status === 'CONFIRMED' && (
+                  <span className="booking-item-link">
+                    <Icon name="qr" size={15} />
+                    แตะเพื่อดู e-Ticket
+                  </span>
                 )}
               </div>
               <StatusBadge status={b.status} />

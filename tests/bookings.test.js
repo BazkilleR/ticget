@@ -203,6 +203,7 @@ describe('GET /bookings/:id', () => {
       status: 'PENDING',
       failReason: null,
       expiresAt: expect.any(String),
+      paidAt: null,
       createdAt: expect.any(String),
     });
   });

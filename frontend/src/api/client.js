@@ -52,6 +52,10 @@ const MESSAGES = {
   capacity_below_reserved: 'ลดความจุต่ำกว่าจำนวนที่นั่งที่จองไปแล้วไม่ได้',
   zone_name_taken: 'มีโซนชื่อนี้ในงานนี้แล้ว',
   invalid_schedule: 'วันเปิดขายต้องไม่เลยวันแสดง',
+  booking_not_found: 'ไม่พบการจองนี้',
+  ticket_not_found: 'ไม่พบบัตรนี้ ตรวจรหัสอีกครั้ง',
+  ticket_wrong_event: 'บัตรนี้เป็นของงานอื่น',
+  ticket_already_used: 'บัตรนี้ถูกใช้เข้างานไปแล้ว',
   internal_error: 'เกิดข้อผิดพลาดในระบบ ลองใหม่อีกครั้ง',
 };
 

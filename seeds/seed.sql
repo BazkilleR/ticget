@@ -1,7 +1,7 @@
 -- Development/test data. Wipes all tables first so it can be re-run and IDs are always the same:
 -- events 1-20, zones in insertion order (event 1 = zones 1-3, event 2 = zones 4-6).
 -- Event and artist names are made up; venues are real Thai venues.
-TRUNCATE bookings, zones, events, users RESTART IDENTITY CASCADE;
+TRUNCATE tickets, bookings, zones, events, users RESTART IDENTITY CASCADE;
 
 -- Bangkok wall-clock time `days` days from today, e.g. bkk(30, '19:30'), so shows start at realistic
 -- hours and the data never goes stale. pg_temp: gone when the seed's connection closes.

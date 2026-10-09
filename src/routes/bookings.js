@@ -33,4 +33,8 @@ router.post('/bookings/:id/pay', requireAuth, validate({ params: bookingParams }
   res.json(await bookingService.payBooking(req.userId, req.params.id));
 }));
 
+router.get('/bookings/:id/tickets', requireAuth, validate({ params: bookingParams }), asyncHandler(async (req, res) => {
+  res.json(await bookingService.getTickets(req.userId, req.params.id));
+}));
+
 module.exports = router;

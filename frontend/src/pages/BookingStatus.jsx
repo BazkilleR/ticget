@@ -193,6 +193,13 @@ export default function BookingStatus() {
 
       <ErrorBanner message={payError || error} />
 
+      {status === 'CONFIRMED' && (
+        <Link to={`/bookings/${booking.bookingId}/tickets`} className="btn btn-primary btn-lg btn-block">
+          <Icon name="qr" />
+          ดู e-Ticket
+        </Link>
+      )}
+
       <div className="link-row">
         <Link to="/me/bookings" className="btn btn-outline">
           บัตรของฉัน

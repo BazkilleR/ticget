@@ -42,7 +42,7 @@ beforeEach(async () => {
 afterEach(() => drainQueue());
 afterAll(closeConnections);
 
-test('register -> login -> browse -> book -> worker -> pay -> history', async () => {
+test('register -> login -> browse -> book -> worker -> pay -> history -> e-tickets', async () => {
   const eventId = await insertEvent('Concert A', '30 days');
   const zoneId = await insertZone(eventId, 'VIP', { price: 5000, capacity: 5 });
   const auth = await signUp('alice');
@@ -79,6 +79,9 @@ test('register -> login -> browse -> book -> worker -> pay -> history', async ()
   const history = await request(app).get('/me/bookings').set(auth).expect(200);
   expect(history.body).toHaveLength(1);
   expect(history.body[0]).toMatchObject({ bookingId: requestId, status: 'CONFIRMED' });
+
+  const tickets = await request(app).get(`/bookings/${requestId}/tickets`).set(auth).expect(200);
+  expect(tickets.body.tickets.map((t) => t.seq)).toEqual([1, 2]);
 });
 
 test('sold out: 5-seat zone, 3 buyers x 2 tickets -> first two succeed, third gets SOLD_OUT', async () => {
