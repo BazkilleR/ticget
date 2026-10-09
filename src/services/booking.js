@@ -68,6 +68,8 @@ const BOOKING_SELECT = `
          b.zone_id    AS "zoneId",
          z.name       AS "zoneName",
          b.quantity,
+         b.unit_price AS "unitPrice",
+         b.unit_price * b.quantity AS "totalPrice",
          CASE WHEN b.status = 'PENDING' AND b.expires_at < now() THEN 'EXPIRED' ELSE b.status END AS status,
          b.fail_reason AS "failReason",
          b.expires_at  AS "expiresAt",
@@ -243,18 +245,21 @@ async function processBooking(rawMessage) {
     );
 
     let failReason = null;
+    let unitPrice = null;
     if (held.rows[0].held + quantity > config.maxTicketsPerUser) {
       failReason = 'USER_LIMIT';
     } else {
       // (4) Reserve seats only if they fit. The check and the increment are one atomic statement, and the
-      // row lock it takes makes concurrent reservations for this zone wait their turn (rule 5).
+      // row lock it takes makes concurrent reservations for this zone wait their turn (rule 5). The price
+      // read under that same lock is the one this booking pays.
       const reserved = await client.query(
         `UPDATE zones SET reserved = reserved + $2
           WHERE id = $1 AND reserved + $2 <= capacity
-         RETURNING reserved`,
+         RETURNING reserved, price`,
         [zoneId, quantity],
       );
       if (reserved.rowCount === 0) failReason = 'SOLD_OUT';
+      else unitPrice = reserved.rows[0].price;
     }
 
     // (5) Record the outcome.
@@ -267,9 +272,9 @@ async function processBooking(rawMessage) {
       result = { bookingId, status: 'FAILED', failReason };
     } else {
       await client.query(
-        `INSERT INTO bookings (id, request_id, user_id, event_id, zone_id, quantity, status, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', now() + make_interval(secs => $7::float8 * 60))`,
-        [bookingId, requestId, userId, eventId, zoneId, quantity, config.bookingHoldMinutes],
+        `INSERT INTO bookings (id, request_id, user_id, event_id, zone_id, quantity, status, unit_price, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7, now() + make_interval(secs => $8::float8 * 60))`,
+        [bookingId, requestId, userId, eventId, zoneId, quantity, unitPrice, config.bookingHoldMinutes],
       );
       result = { bookingId, status: 'PENDING' };
     }

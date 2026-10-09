@@ -9,7 +9,7 @@ import MyBookings from './pages/MyBookings';
 import Search from './pages/Search';
 import Tickets from './pages/Tickets';
 import AdminLayout from './pages/admin/AdminLayout';
-import AdminHome from './pages/admin/AdminHome';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminEvents from './pages/admin/AdminEvents';
 import AdminEventNew from './pages/admin/AdminEventNew';
 import AdminEventEdit from './pages/admin/AdminEventEdit';
@@ -131,7 +131,7 @@ export default function App() {
               </AdminRoute>
             }
           >
-            <Route index element={<AdminHome />} />
+            <Route index element={<AdminDashboard />} />
             <Route path="events" element={<AdminEvents />} />
             <Route path="events/new" element={<AdminEventNew />} />
             <Route path="events/:id" element={<AdminEventEdit />} />

@@ -4,22 +4,8 @@ import { errorMessage } from '../../api/client';
 import { useApi } from '../../auth/AuthContext';
 import { ErrorBanner, Icon, Spinner } from '../../components/common';
 import { SaleChip } from '../../components/EventCard';
+import { SoldBar, SoldLegend } from '../../components/charts';
 import { formatDateTime } from '../../format';
-
-export function SoldBar({ sold, held, capacity }) {
-  const pct = (n) => (capacity ? Math.min(100, (n / capacity) * 100) : 0);
-  return (
-    <div className="sold-bar" title={`ขายแล้ว ${sold} · รอชำระ ${held} · ความจุ ${capacity}`}>
-      <span className="sold-bar-track">
-        <span className="sold-bar-sold" style={{ width: `${pct(sold)}%` }} />
-        <span className="sold-bar-held" style={{ width: `${pct(held)}%` }} />
-      </span>
-      <span className="sold-bar-label">
-        {sold.toLocaleString('th-TH')} / {capacity.toLocaleString('th-TH')}
-      </span>
-    </div>
-  );
-}
 
 export default function AdminEvents() {
   const api = useApi();
@@ -54,6 +40,7 @@ export default function AdminEvents() {
       <ErrorBanner message={error} />
       {!events && !error && <Spinner />}
       {events?.length === 0 && <p className="empty">ยังไม่มีงานแสดง</p>}
+      {events?.length > 0 && <SoldLegend />}
       {events?.length > 0 && (
         <div className="table-wrap">
           <table className="table">

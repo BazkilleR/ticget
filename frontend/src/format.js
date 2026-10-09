@@ -14,6 +14,11 @@ export const dateParts = (iso) => {
   return { day: dayOfMonth.format(d), month: monthShort.format(d) };
 };
 
+const dayShort = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' });
+// 'YYYY-MM-DD' (a Bangkok calendar day from the API) -> '9 ต.ค.'
+export const formatDay = (day) => dayShort.format(new Date(`${day}T12:00:00+07:00`));
+export const formatPercent = (ratio) => `${(ratio * 100).toLocaleString('th-TH', { maximumFractionDigits: 1 })}%`;
+
 export const isSaleOpen = (event) => new Date(event.saleOpensAt) <= new Date();
 
 // Admin <input type="datetime-local"> values are Thai wall-clock time whatever time zone the browser is in.

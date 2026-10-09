@@ -61,6 +61,8 @@ const ICONS = {
   logout: 'M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11',
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
   qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2M14 18h2v2M18 18h2v2h-2z',
+  download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+  refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
 };
 
 export function Icon({ name, size = 18 }) {

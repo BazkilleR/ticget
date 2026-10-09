@@ -152,6 +152,8 @@ CREATE TABLE bookings (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 005_booking_price.sql: bookings.unit_price INT ราคาโซน ณ ตอนจอง (worker อ่านจาก UPDATE zones ... RETURNING price)
+-- รายงานยอดขายใช้ unit_price เสมอ admin แก้ราคาภายหลังยอดเดิมไม่เปลี่ยน
 -- 004_tickets.sql: bookings.paid_at TIMESTAMPTZ และ e-ticket 1 ใบต่อ 1 ที่นั่ง ออกตอนจ่ายเงินใน statement เดียวกับการ CONFIRMED
 CREATE TABLE tickets (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -211,12 +213,16 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 | PATCH | `/admin/zones/:id` | แก้ name/price/capacity, ลด capacity ต่ำกว่า reserved ได้ `409 capacity_below_reserved` |
 | DELETE | `/admin/zones/:id` | `204` หรือ `409 zone_has_bookings` |
 | GET | `/admin/tickets/:code` | ดูบัตรก่อนให้เข้างาน (ผู้จอง, โซน, ใบที่, ใช้แล้วหรือยัง) |
+| GET | `/admin/dashboard` | `{ revenue, ticketsSold, ticketsHeld, upcomingEvents, bookingsByStatus, failReasons, topEvents, recentSales, daily }` (`daily` = 14 วันล่าสุดตามเวลาไทย) |
+| GET | `/admin/events/:id/sales` | `{ event, totals, zones: [{ ..., sold, held, available, revenue, sellThrough }], daily }` |
+| GET | `/admin/reports/sales.csv?from&to&eventId` | CSV ของการจองที่ชำระแล้ว (UTF-8 + BOM, กัน CSV injection) |
 | POST | `/admin/tickets/check-in` | `{ code, eventId }` → `200` หรือ `409 ticket_already_used` / `409 ticket_wrong_event` / `404 ticket_not_found` |
 
 - วันเวลาต้องมี offset เสมอ (`Z` หรือ `+07:00`)
 - ลด capacity: ใน transaction เดียว `releaseExpired` → `SELECT ... FOR UPDATE` → ตรวจ → `UPDATE` โดยมี `CHECK (reserved <= capacity)` กันอีกชั้น
 - ลบ: พึ่ง foreign key ของ bookings ไม่ตรวจก่อนแล้วค่อยลบ จึงไม่มี race กับ worker
 - เปลี่ยนราคามีผลกับการจองใหม่เท่านั้น
+- ยอดขาย: sold/revenue = CONFIRMED เท่านั้น, held = PENDING ที่ยังไม่หมดเวลา, PENDING ที่หมดเวลาแล้วนับเป็น EXPIRED (กฎข้อ 6)
 - ทุกการแก้ไขล้าง `events:list`, `event:{id}`, `event:{id}:zones` และ log `admin_event_change` พร้อม `adminId`
 | POST | `/bookings/:id/pay` | **mock** ชำระเงิน → `CONFIRMED` (ถ้ายังไม่หมดเวลา) และออก e-ticket ตามจำนวนที่นั่ง |
 | GET | `/bookings/:id/tickets` | `{ bookingId, status, quantity, paidAt, event, zone, tickets: [{ ticketId, seq, code, checkedInAt }] }` ว่างจนกว่าจะจ่าย, ของคนอื่นได้ `404 booking_not_found` |

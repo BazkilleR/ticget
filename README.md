@@ -113,7 +113,8 @@ npm run aws:destroy                                     # delete the stack when 
 |---|---|
 | `dev` | start Docker, migrate, then run API + worker + web UI together (Ctrl+C stops all) |
 | `dev:api` / `dev:worker` / `dev:web` | run the API, worker or web UI with auto-reload |
-| `migrate` / `seed` | update the schema, load sample data (**seed wipes every table first**) |
+| `migrate` / `seed` | update the schema, load sample data and the admin account from `ADMIN_USERNAME` / `ADMIN_PASSWORD` (**seed wipes every table first**) |
+| `seed:demo` | add a week of paid bookings (with e-tickets) so the admin sales dashboard has data |
 | `expire` | run the expired-hold cleanup once |
 | `test` | integration tests |
 | `load:prepare` / `load:run` / `load:verify` | load test |

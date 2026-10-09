@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { errorMessage } from '../../api/client';
 import { useApi } from '../../auth/AuthContext';
 import { ErrorBanner, Icon, Spinner } from '../../components/common';
-import { SoldBar } from './AdminEvents';
+import { SoldBar, SoldLegend } from '../../components/charts';
+import EventSales from './EventSales';
 import EventFields, { eventToForm, formToEvent } from './EventFields';
 
 const fmt = (n) => n.toLocaleString('th-TH');
@@ -157,6 +158,8 @@ export default function AdminEventEdit() {
   const [saveError, setSaveError] = useState(null);
   const [notice, setNotice] = useState(location.state?.created ? 'สร้างงานแสดงแล้ว' : null);
   const [saving, setSaving] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') === 'sales' ? 'sales' : 'details';
 
   const load = useCallback(async () => {
     try {
@@ -223,57 +226,83 @@ export default function AdminEventEdit() {
         </Link>
       </div>
 
-      <SuccessBanner message={notice} />
-
-      <form className="panel" onSubmit={handleSave}>
-        <h2 className="panel-title">ข้อมูลงาน</h2>
-        <EventFields form={form} onChange={setForm} />
-        <ErrorBanner message={saveError} />
-        <div className="form-actions">
+      <h2 className="admin-event-title">{event.name}</h2>
+      <div className="tabs" role="tablist">
+        {[
+          ['details', 'ข้อมูลงานและโซน'],
+          ['sales', 'ยอดขาย'],
+        ].map(([key, label]) => (
           <button
+            key={key}
             type="button"
-            className="btn btn-danger"
-            disabled={hasBookings}
-            title={hasBookings ? 'งานที่มีการจองแล้วลบไม่ได้' : undefined}
-            onClick={handleDelete}
+            role="tab"
+            aria-selected={tab === key}
+            className={tab === key ? 'active' : ''}
+            onClick={() => setParams(key === 'sales' ? { tab: 'sales' } : {}, { replace: true })}
           >
-            ลบงานแสดง
+            {label}
           </button>
-          <button type="submit" className="btn btn-primary" disabled={!dirty || saving}>
-            {saving ? 'กำลังบันทึก…' : 'บันทึก'}
-          </button>
-        </div>
-      </form>
-
-      <div className="panel">
-        <h2 className="panel-title">โซนและที่นั่ง</h2>
-        <p className="fine-print">
-          รวม {fmt(totals.capacity)} ที่นั่ง · ขายแล้ว {fmt(totals.sold)} · รอชำระ {fmt(totals.held)} · ราคาที่แก้มีผลกับการจองใหม่เท่านั้น
-        </p>
-        <div className="table-wrap">
-          <table className="table table-form">
-            <thead>
-              <tr>
-                <th>ชื่อโซน</th>
-                <th>ราคา (บาท)</th>
-                <th>ความจุ</th>
-                <th>ขายแล้ว / ความจุ</th>
-                <th className="num">รอชำระ</th>
-                <th className="num">ว่าง</th>
-                <th aria-label="จัดการ" />
-              </tr>
-            </thead>
-            <tbody>
-              {event.zones.map((zone) => (
-                // Keyed on the saved values so the row's inputs reset to the server's state after a save.
-                <ZoneRow key={`${zone.zoneId}:${zone.name}:${zone.price}:${zone.capacity}`} zone={zone} onSaved={load} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {event.zones.length === 0 && <p className="empty">ยังไม่มีโซน เพิ่มโซนด้านล่างเพื่อเปิดขาย</p>}
-        <AddZone eventId={event.id} onSaved={load} />
+        ))}
       </div>
+
+      {tab === 'sales' ? (
+        <EventSales eventId={event.id} />
+      ) : (
+        <>
+          <SuccessBanner message={notice} />
+
+          <form className="panel" onSubmit={handleSave}>
+            <h2 className="panel-title">ข้อมูลงาน</h2>
+            <EventFields form={form} onChange={setForm} />
+            <ErrorBanner message={saveError} />
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={hasBookings}
+                title={hasBookings ? 'งานที่มีการจองแล้วลบไม่ได้' : undefined}
+                onClick={handleDelete}
+              >
+                ลบงานแสดง
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={!dirty || saving}>
+                {saving ? 'กำลังบันทึก…' : 'บันทึก'}
+              </button>
+            </div>
+          </form>
+
+          <div className="panel">
+            <h2 className="panel-title">โซนและที่นั่ง</h2>
+            <SoldLegend />
+            <p className="fine-print">
+              รวม {fmt(totals.capacity)} ที่นั่ง · ขายแล้ว {fmt(totals.sold)} · รอชำระ {fmt(totals.held)} · ราคาที่แก้มีผลกับการจองใหม่เท่านั้น
+            </p>
+            <div className="table-wrap">
+              <table className="table table-form">
+                <thead>
+                  <tr>
+                    <th>ชื่อโซน</th>
+                    <th>ราคา (บาท)</th>
+                    <th>ความจุ</th>
+                    <th>ขายแล้ว / ความจุ</th>
+                    <th className="num">รอชำระ</th>
+                    <th className="num">ว่าง</th>
+                    <th aria-label="จัดการ" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {event.zones.map((zone) => (
+                    // Keyed on the saved values so the row's inputs reset to the server's state after a save.
+                    <ZoneRow key={`${zone.zoneId}:${zone.name}:${zone.price}:${zone.capacity}`} zone={zone} onSaved={load} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {event.zones.length === 0 && <p className="empty">ยังไม่มีโซน เพิ่มโซนด้านล่างเพื่อเปิดขาย</p>}
+            <AddZone eventId={event.id} onSaved={load} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

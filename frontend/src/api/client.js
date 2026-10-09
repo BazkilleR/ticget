@@ -35,6 +35,27 @@ export async function request(path, { method = 'GET', body, token, signal } = {}
   return data;
 }
 
+// Saves an authenticated file response (e.g. the CSV report). A plain <a href> cannot send the bearer
+// token, so fetch it, then hand the browser a temporary object URL to download.
+export async function downloadFile(path, { token, filename }) {
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch {
+    throw new ApiError(0, 'network_error', 'Network error');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(res.status, data?.error || 'http_error', data?.message || res.statusText);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const link = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 const MESSAGES = {
   network_error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง',
   invalid_credentials: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',

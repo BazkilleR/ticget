@@ -50,12 +50,24 @@ async function insertZone(eventId, name, { price = 1000, capacity = 10, reserved
 
 // Inserts a booking row directly. It does not touch zones.reserved: set that on the zone to match.
 // expiresIn is an interval relative to now(), negative for a hold that has already run out.
-async function insertBooking({ userId, eventId, zoneId, quantity = 1, status = 'PENDING', failReason = null, expiresIn = '10 minutes' }) {
+// unitPrice and paidAgo (an interval before now(), CONFIRMED only) are for sales-report fixtures.
+async function insertBooking({
+  userId,
+  eventId,
+  zoneId,
+  quantity = 1,
+  status = 'PENDING',
+  failReason = null,
+  expiresIn = '10 minutes',
+  unitPrice = null,
+  paidAgo = null,
+}) {
   const id = randomUUID();
   await pool.query(
-    `INSERT INTO bookings (id, request_id, user_id, event_id, zone_id, quantity, status, fail_reason, expires_at)
-     VALUES ($1, $1, $2, $3, $4, $5, $6, $7, now() + $8::interval)`,
-    [id, userId, eventId, zoneId, quantity, status, failReason, expiresIn],
+    `INSERT INTO bookings (id, request_id, user_id, event_id, zone_id, quantity, status, fail_reason, expires_at,
+                           unit_price, paid_at)
+     VALUES ($1, $1, $2, $3, $4, $5, $6, $7, now() + $8::interval, $9, now() - $10::interval)`,
+    [id, userId, eventId, zoneId, quantity, status, failReason, expiresIn, unitPrice, paidAgo],
   );
   return id;
 }

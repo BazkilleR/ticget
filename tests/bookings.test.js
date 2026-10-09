@@ -200,6 +200,8 @@ describe('GET /bookings/:id', () => {
       zoneId,
       zoneName: 'GA',
       quantity: 3,
+      unitPrice: null,
+      totalPrice: null,
       status: 'PENDING',
       failReason: null,
       expiresAt: expect.any(String),
