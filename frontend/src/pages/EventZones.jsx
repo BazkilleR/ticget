@@ -2,11 +2,86 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { request, errorMessage } from '../api/client';
 import { useApi, useAuth } from '../auth/AuthContext';
-import { ErrorBanner, Spinner } from '../components/common';
-import { formatDateTime, formatPrice } from '../format';
+import { ErrorBanner, Icon, Poster, Spinner, Steps } from '../components/common';
+import { formatDate, formatDateTime, formatPrice, formatTime, isSaleOpen } from '../format';
 
 const ZONES_REFRESH_MS = 5000;
 const MAX_PER_BOOKING = 4;
+const ZONE_COLORS = ['#e5202e', '#ff8a00', '#2e86de', '#10ac84', '#8e44ad', '#d4a017'];
+
+function EventHeader({ event, zones }) {
+  const prices = zones?.map((z) => z.price) ?? [];
+  const low = Math.min(...prices);
+  const high = Math.max(...prices);
+  return (
+    <section className="event-hero">
+      <div className="wrap event-hero-inner">
+        <Poster event={event} />
+        <div className="event-hero-info">
+          <Link to="/" className="back-link">
+            <Icon name="back" size={16} />
+            อีเวนต์ทั้งหมด
+          </Link>
+          <h1>{event.name}</h1>
+          <ul className="meta meta-light">
+            <li>
+              <Icon name="calendar" />
+              {formatDate(event.startsAt)}
+            </li>
+            <li>
+              <Icon name="clock" />
+              {formatTime(event.startsAt)}
+            </li>
+            <li>
+              <Icon name="pin" />
+              {event.venue}
+            </li>
+            {prices.length > 0 && (
+              <li>
+                <Icon name="ticket" />
+                {low === high ? formatPrice(low) : `${formatPrice(low)} – ${formatPrice(high)}`}
+              </li>
+            )}
+          </ul>
+          {isSaleOpen(event) ? (
+            <span className="chip chip-open">เปิดขายแล้ว</span>
+          ) : (
+            <span className="chip chip-soon">เปิดขาย {formatDateTime(event.saleOpensAt)}</span>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Stage plan: the most expensive zone sits closest to the stage and each zone further back is wider.
+// It mirrors the radio list in the side panel, which is the accessible control, so it is hidden from
+// assistive tech and kept out of the tab order.
+function VenueMap({ zones, colors, selectedZoneId, onSelect }) {
+  return (
+    <div className="venue-map" aria-hidden="true">
+      <div className="stage">STAGE</div>
+      {zones.map((zone, i) => {
+        const soldOut = zone.available <= 0;
+        const width = 50 + (50 * i) / Math.max(zones.length - 1, 1);
+        return (
+          <button
+            key={zone.zoneId}
+            type="button"
+            tabIndex={-1}
+            disabled={soldOut}
+            className={`map-zone${selectedZoneId === zone.zoneId ? ' selected' : ''}`}
+            style={{ '--zone': soldOut ? '#b9b9c2' : colors[zone.zoneId], width: `${width}%` }}
+            onClick={() => onSelect(zone.zoneId)}
+          >
+            <strong>{zone.name}</strong>
+            <span>{soldOut ? 'SOLD OUT' : formatPrice(zone.price)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function EventZones() {
   const { id } = useParams();
@@ -29,10 +104,12 @@ export default function EventZones() {
   const attempt = useRef(null);
 
   useEffect(() => {
-    // /events only lists events that have not started; a missing entry just means no header details.
-    request('/events')
-      .then((list) => setEvent(list.find((e) => e.id === eventId) || null))
+    // Header details only; if this fails the zones request reports the error.
+    const controller = new AbortController();
+    request(`/events/${eventId}`, { signal: controller.signal })
+      .then(setEvent)
       .catch(() => {});
+    return () => controller.abort();
   }, [eventId]);
 
   // Availability changes while people book, so poll it. The API caches zones for 3 s, which keeps this cheap.
@@ -57,9 +134,11 @@ export default function EventZones() {
     };
   }, [eventId]);
 
+  const ranked = zones ? [...zones].sort((a, b) => b.price - a.price) : [];
+  const colors = Object.fromEntries(ranked.map((z, i) => [z.zoneId, ZONE_COLORS[i % ZONE_COLORS.length]]));
   const selectedZone = zones?.find((z) => z.zoneId === selectedZoneId);
   const maxQuantity = Math.min(MAX_PER_BOOKING, selectedZone?.available ?? 0);
-  const saleOpen = !event || new Date(event.saleOpensAt) <= new Date();
+  const saleOpen = !event || isSaleOpen(event);
 
   // Keep the chosen quantity valid when availability drops under it.
   useEffect(() => {
@@ -90,87 +169,116 @@ export default function EventZones() {
     }
   }
 
+  const canBook = selectedZone && maxQuantity > 0 && saleOpen && !submitting;
+  let buttonLabel = 'ยืนยันการจอง';
+  if (submitting) buttonLabel = 'กำลังส่งคำขอ…';
+  else if (!saleOpen) buttonLabel = 'ยังไม่เปิดขาย';
+  else if (!selectedZone) buttonLabel = 'กรุณาเลือกโซน';
+  else if (!token) buttonLabel = 'เข้าสู่ระบบเพื่อจอง';
+
   return (
-    <section>
-      <p>
-        <Link to="/">← อีเวนต์ทั้งหมด</Link>
-      </p>
+    <>
       {event ? (
-        <header className="event-header">
-          <h1>{event.name}</h1>
-          <p className="muted">
-            {event.venue} · {formatDateTime(event.startsAt)}
-          </p>
-          {!saleOpen && (
-            <p className="banner banner-info">เปิดขาย {formatDateTime(event.saleOpensAt)}</p>
-          )}
-        </header>
+        <EventHeader event={event} zones={zones} />
       ) : (
-        <h1>เลือกโซน</h1>
+        <div className="wrap page-head">
+          <Link to="/" className="back-link back-link-dark">
+            <Icon name="back" size={16} />
+            อีเวนต์ทั้งหมด
+          </Link>
+          <h1>เลือกโซน</h1>
+        </div>
       )}
 
-      <ErrorBanner message={loadError} />
-      {!zones && !loadError && <Spinner />}
-
-      {zones && (
-        <form onSubmit={handleBook} className="stack">
-          <fieldset className="zones">
-            <legend className="sr-only">โซน</legend>
-            {zones.map((zone) => {
-              const soldOut = zone.available <= 0;
-              return (
-                <label
-                  key={zone.zoneId}
-                  className={`card zone-card${selectedZoneId === zone.zoneId ? ' selected' : ''}${soldOut ? ' disabled' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="zone"
-                    value={zone.zoneId}
-                    disabled={soldOut}
-                    checked={selectedZoneId === zone.zoneId}
-                    onChange={() => setSelectedZoneId(zone.zoneId)}
-                  />
-                  <span className="zone-name">{zone.name}</span>
-                  <span className="zone-price">{formatPrice(zone.price)}</span>
-                  <span className={soldOut ? 'sold-out' : 'muted'}>
-                    {soldOut ? 'เต็มแล้ว' : `เหลือ ${zone.available.toLocaleString('th-TH')} ใบ`}
-                  </span>
-                </label>
-              );
-            })}
-          </fieldset>
-
-          <div className="book-bar card">
-            <label className="field field-inline">
-              <span>จำนวน</span>
-              <select
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                disabled={!selectedZone || maxQuantity === 0}
-              >
-                {Array.from({ length: Math.max(maxQuantity, 1) }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n} ใบ
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span className="total">
-              {selectedZone ? formatPrice(selectedZone.price * quantity) : 'เลือกโซนก่อน'}
-            </span>
-            <button
-              type="submit"
-              className="button"
-              disabled={!selectedZone || maxQuantity === 0 || !saleOpen || submitting}
-            >
-              {submitting ? 'กำลังส่งคำขอ…' : token ? 'จองเลย' : 'เข้าสู่ระบบเพื่อจอง'}
-            </button>
+      <section className="wrap section">
+        <Steps current={0} />
+        {event?.description && (
+          <div className="panel event-description">
+            <h2 className="panel-title">รายละเอียดงาน</h2>
+            <p>{event.description}</p>
           </div>
-          <ErrorBanner message={submitError} />
-          <p className="muted small">จำกัด {MAX_PER_BOOKING} ใบต่อคนต่ออีเวนต์ · ต้องชำระเงินภายใน 10 นาทีหลังจองสำเร็จ</p>
-        </form>
-      )}
-    </section>
+        )}
+        <ErrorBanner message={loadError} />
+        {!zones && !loadError && <Spinner />}
+
+        {zones && (
+          <form onSubmit={handleBook} className="booking-layout">
+            <div className="panel">
+              <h2 className="panel-title">ผังที่นั่ง</h2>
+              <VenueMap zones={ranked} colors={colors} selectedZoneId={selectedZoneId} onSelect={setSelectedZoneId} />
+            </div>
+
+            <div className="panel panel-sticky">
+              <h2 className="panel-title">ราคาบัตร</h2>
+              <fieldset className="price-list">
+                <legend className="sr-only">เลือกโซน</legend>
+                {ranked.map((zone) => {
+                  const soldOut = zone.available <= 0;
+                  return (
+                    <label
+                      key={zone.zoneId}
+                      className={`price-row${selectedZoneId === zone.zoneId ? ' selected' : ''}${soldOut ? ' disabled' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="zone"
+                        value={zone.zoneId}
+                        disabled={soldOut}
+                        checked={selectedZoneId === zone.zoneId}
+                        onChange={() => setSelectedZoneId(zone.zoneId)}
+                      />
+                      <span className="zone-dot" style={{ '--zone': soldOut ? '#b9b9c2' : colors[zone.zoneId] }} />
+                      <span className="price-row-name">
+                        {zone.name}
+                        <small className={soldOut ? 'text-danger' : ''}>
+                          {soldOut ? 'เต็มแล้ว' : `เหลือ ${zone.available.toLocaleString('th-TH')} ใบ`}
+                        </small>
+                      </span>
+                      <span className="price-row-price">{formatPrice(zone.price)}</span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+
+              <div className="qty-row">
+                <span id="qty-label">จำนวนบัตร</span>
+                <div className="qty" role="group" aria-labelledby="qty-label">
+                  <button
+                    type="button"
+                    aria-label="ลดจำนวน"
+                    onClick={() => setQuantity((q) => q - 1)}
+                    disabled={!selectedZone || quantity <= 1}
+                  >
+                    <Icon name="minus" size={16} />
+                  </button>
+                  <output aria-live="polite">{quantity}</output>
+                  <button
+                    type="button"
+                    aria-label="เพิ่มจำนวน"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    disabled={!selectedZone || quantity >= maxQuantity}
+                  >
+                    <Icon name="plus" size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="total-row">
+                <span>ยอดรวม</span>
+                <strong>{selectedZone ? formatPrice(selectedZone.price * quantity) : '–'}</strong>
+              </div>
+
+              <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={!canBook}>
+                {buttonLabel}
+              </button>
+              <ErrorBanner message={submitError} />
+              <p className="fine-print">
+                จำกัด {MAX_PER_BOOKING} ใบต่อคนต่ออีเวนต์ · ต้องชำระเงินภายใน 10 นาทีหลังจองสำเร็จ
+              </p>
+            </div>
+          </form>
+        )}
+      </section>
+    </>
   );
 }

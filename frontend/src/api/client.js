@@ -35,17 +35,48 @@ export async function request(path, { method = 'GET', body, token, signal } = {}
   return data;
 }
 
+// Saves an authenticated file response (e.g. the CSV report). A plain <a href> cannot send the bearer
+// token, so fetch it, then hand the browser a temporary object URL to download.
+export async function downloadFile(path, { token, filename }) {
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch {
+    throw new ApiError(0, 'network_error', 'Network error');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(res.status, data?.error || 'http_error', data?.message || res.statusText);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const link = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 const MESSAGES = {
   network_error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง',
   invalid_credentials: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
   username_taken: 'ชื่อผู้ใช้นี้ถูกใช้แล้ว',
   unauthorized: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+  forbidden: 'คุณไม่มีสิทธิ์ใช้งานส่วนนี้',
   event_not_found: 'ไม่พบอีเวนต์นี้',
   zone_not_found: 'ไม่พบโซนนี้ในอีเวนต์',
   sale_not_open: 'ยังไม่เปิดขาย',
   sale_closed: 'อีเวนต์เริ่มแล้ว ปิดการขาย',
   queue_unavailable: 'ระบบรับคำขอไม่ได้ชั่วคราว กดจองอีกครั้งได้เลย',
   booking_not_payable: 'ชำระเงินไม่ได้ การจองนี้หมดเวลาหรือไม่อยู่ในสถานะรอชำระ',
+  event_has_bookings: 'ลบไม่ได้ เพราะงานนี้มีการจองแล้ว',
+  zone_has_bookings: 'ลบไม่ได้ เพราะโซนนี้มีการจองแล้ว',
+  capacity_below_reserved: 'ลดความจุต่ำกว่าจำนวนที่นั่งที่จองไปแล้วไม่ได้',
+  zone_name_taken: 'มีโซนชื่อนี้ในงานนี้แล้ว',
+  invalid_schedule: 'วันเปิดขายต้องไม่เลยวันแสดง',
+  booking_not_found: 'ไม่พบการจองนี้',
+  ticket_not_found: 'ไม่พบบัตรนี้ ตรวจรหัสอีกครั้ง',
+  ticket_wrong_event: 'บัตรนี้เป็นของงานอื่น',
+  ticket_already_used: 'บัตรนี้ถูกใช้เข้างานไปแล้ว',
   internal_error: 'เกิดข้อผิดพลาดในระบบ ลองใหม่อีกครั้ง',
 };
 

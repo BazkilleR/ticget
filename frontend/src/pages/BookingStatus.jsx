@@ -1,13 +1,37 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { ApiError, errorMessage } from '../api/client';
+import { ApiError, errorMessage, request } from '../api/client';
 import { useApi } from '../auth/AuthContext';
-import { Countdown, ErrorBanner, Spinner, StatusBadge } from '../components/common';
-import { FAIL_REASONS, formatDateTime } from '../format';
+import { Countdown, ErrorBanner, Icon, Poster, Spinner, StatusBadge, Steps } from '../components/common';
+import { FAIL_REASONS, formatDate, formatDateTime, formatPrice, formatTime } from '../format';
 
 // The worker usually picks a booking up within a second or two; back off if the queue is busy.
 const pollDelay = (attempt) => (attempt < 5 ? 1000 : attempt < 15 ? 2000 : 3000);
 const SLOW_QUEUE_ATTEMPTS = 20;
+
+const STEP_FOR_STATUS = { QUEUED: 1, FAILED: 1, PENDING: 2, EXPIRED: 2, CONFIRMED: 4 };
+
+// The booking itself only carries names, so fetch the public event and zone details for the ticket (venue,
+// date, price). Best effort: if either request fails the ticket just shows less.
+function useTicketDetails(eventId, zoneId) {
+  const [details, setDetails] = useState({});
+  useEffect(() => {
+    if (!eventId) return undefined;
+    const controller = new AbortController();
+    const { signal } = controller;
+    Promise.allSettled([request(`/events/${eventId}`, { signal }), request(`/events/${eventId}/zones`, { signal })]).then(
+      ([event, zones]) => {
+        if (signal.aborted) return;
+        setDetails({
+          event: event.value,
+          zone: zones.value?.find((z) => z.zoneId === zoneId),
+        });
+      },
+    );
+    return () => controller.abort();
+  }, [eventId, zoneId]);
+  return details;
+}
 
 export default function BookingStatus() {
   const { id } = useParams();
@@ -21,6 +45,7 @@ export default function BookingStatus() {
   const [payError, setPayError] = useState(null);
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const { event, zone } = useTicketDetails(booking?.eventId, booking?.zoneId);
 
   // POST /bookings only queues the request, so poll until the worker has written a result.
   useEffect(() => {
@@ -70,68 +95,121 @@ export default function BookingStatus() {
 
   if (!booking) {
     return (
-      <section className="card booking-card">
+      <section className="wrap section narrow">
         <ErrorBanner message={error} />
         {!error && <Spinner />}
       </section>
     );
   }
 
-  return (
-    <section className="card booking-card">
-      <div className="booking-head">
-        <h1>สถานะการจอง</h1>
-        <StatusBadge status={booking.status} />
-      </div>
+  const { status } = booking;
 
-      {booking.status === 'QUEUED' ? (
-        <div className="queued">
-          <div className="pulse" aria-hidden="true" />
-          <p>คำขอของคุณอยู่ในคิว ระบบกำลังตรวจสอบที่นั่ง…</p>
+  return (
+    <section className="wrap section narrow">
+      <Steps current={STEP_FOR_STATUS[status] ?? 1} failed={status === 'FAILED' || status === 'EXPIRED'} />
+
+      {status === 'QUEUED' && (
+        <div className="panel queued">
+          <div className="queue-anim" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <h1>กำลังตรวจสอบที่นั่ง</h1>
+          <p>คำขอของคุณอยู่ในคิวแล้ว กรุณาอย่าปิดหรือรีเฟรชหน้านี้</p>
           {attempts >= SLOW_QUEUE_ATTEMPTS && (
-            <p className="muted small">ตอนนี้มีคนจองพร้อมกันจำนวนมาก ไม่ต้องกดจองซ้ำ หน้านี้จะอัปเดตเอง</p>
+            <p className="fine-print">ตอนนี้มีคนจองพร้อมกันจำนวนมาก ไม่ต้องกดจองซ้ำ หน้านี้จะอัปเดตเอง</p>
           )}
         </div>
-      ) : (
-        <dl className="details">
-          <dt>อีเวนต์</dt>
-          <dd>{booking.eventName}</dd>
-          <dt>โซน</dt>
-          <dd>{booking.zoneName}</dd>
-          <dt>จำนวน</dt>
-          <dd>{booking.quantity} ใบ</dd>
-          <dt>จองเมื่อ</dt>
-          <dd>{formatDateTime(booking.createdAt)}</dd>
-        </dl>
       )}
 
-      {booking.status === 'PENDING' && (
-        <div className="pay-box">
-          <p>
-            ชำระเงินภายใน <Countdown until={booking.expiresAt} onExpire={refresh} />
-          </p>
-          <button type="button" className="button" onClick={handlePay} disabled={paying}>
-            {paying ? 'กำลังชำระเงิน…' : 'ชำระเงิน (จำลอง)'}
-          </button>
+      {status === 'PENDING' && (
+        <div className="timer-bar">
+          <span>กรุณาชำระเงินภายใน</span>
+          <Countdown until={booking.expiresAt} onExpire={refresh} />
         </div>
       )}
-      {booking.status === 'CONFIRMED' && <p className="banner banner-success">ชำระเงินเรียบร้อย ตั๋วของคุณได้รับการยืนยันแล้ว</p>}
-      {booking.status === 'EXPIRED' && <p className="banner banner-info">หมดเวลาชำระเงิน ที่นั่งถูกคืนให้ผู้อื่นแล้ว</p>}
-      {booking.status === 'FAILED' && (
+      {status === 'CONFIRMED' && (
+        <p className="banner banner-success">
+          <Icon name="check" />
+          ชำระเงินเรียบร้อย บัตรของคุณได้รับการยืนยันแล้ว
+        </p>
+      )}
+      {status === 'EXPIRED' && <p className="banner banner-info">หมดเวลาชำระเงิน ที่นั่งถูกคืนให้ผู้อื่นแล้ว</p>}
+      {status === 'FAILED' && (
         <p className="banner banner-error">{FAIL_REASONS[booking.failReason] || 'จองไม่สำเร็จ'}</p>
+      )}
+
+      {status !== 'QUEUED' && (
+        <article className={`ticket ticket-${status.toLowerCase()}`}>
+          <div className="ticket-main">
+            <Poster event={{ id: booking.eventId, name: booking.eventName, startsAt: event?.startsAt }} variant="thumb" />
+            <div className="ticket-info">
+              <StatusBadge status={status} />
+              <h1>{booking.eventName}</h1>
+              {event && (
+                <ul className="meta">
+                  <li>
+                    <Icon name="calendar" size={16} />
+                    {formatDate(event.startsAt)} · {formatTime(event.startsAt)}
+                  </li>
+                  <li>
+                    <Icon name="pin" size={16} />
+                    {event.venue}
+                  </li>
+                </ul>
+              )}
+            </div>
+          </div>
+          <dl className="ticket-stub">
+            <div>
+              <dt>โซน</dt>
+              <dd>{booking.zoneName}</dd>
+            </div>
+            <div>
+              <dt>จำนวน</dt>
+              <dd>{booking.quantity} ใบ</dd>
+            </div>
+            {zone && (
+              <div>
+                <dt>ยอดชำระ</dt>
+                <dd>{formatPrice(zone.price * booking.quantity)}</dd>
+              </div>
+            )}
+            <div>
+              <dt>จองเมื่อ</dt>
+              <dd>{formatDateTime(booking.createdAt)}</dd>
+            </div>
+          </dl>
+          <p className="ticket-ref">เลขที่การจอง {booking.bookingId}</p>
+        </article>
+      )}
+
+      {status === 'PENDING' && (
+        <button type="button" className="btn btn-primary btn-lg btn-block" onClick={handlePay} disabled={paying}>
+          {paying ? 'กำลังชำระเงิน…' : 'ชำระเงิน (จำลอง)'}
+        </button>
       )}
 
       <ErrorBanner message={payError || error} />
 
-      <p className="muted small">
-        <Link to="/me/bookings">ดูการจองทั้งหมด</Link>
+      {status === 'CONFIRMED' && (
+        <Link to={`/bookings/${booking.bookingId}/tickets`} className="btn btn-primary btn-lg btn-block">
+          <Icon name="qr" />
+          ดู e-Ticket
+        </Link>
+      )}
+
+      <div className="link-row">
+        <Link to="/me/bookings" className="btn btn-outline">
+          บัตรของฉัน
+        </Link>
         {booking.eventId && (
-          <>
-            {' · '}
-            <Link to={`/events/${booking.eventId}`}>กลับไปหน้าอีเวนต์</Link>
-          </>
+          <Link to={`/events/${booking.eventId}`} className="btn btn-outline">
+            กลับไปหน้าอีเวนต์
+          </Link>
         )}
-      </p>
+      </div>
     </section>
   );
 }

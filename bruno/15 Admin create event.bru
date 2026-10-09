@@ -1,0 +1,48 @@
+meta {
+  name: Admin create event
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/admin/events
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+script:pre-request {
+  const day = 86400000;
+  req.setBody({
+    name: `Bruno Test Show ${Date.now()}`,
+    venue: "Impact Arena",
+    description: "สร้างจาก Bruno collection",
+    startsAt: new Date(Date.now() + 30 * day).toISOString(),
+    saleOpensAt: new Date(Date.now() - day).toISOString(),
+    zones: [
+      { name: "VIP", price: 4500, capacity: 50 },
+      { name: "GA", price: 1500, capacity: 300 },
+    ],
+  });
+}
+
+body:json {
+  {}
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("adminEventId", res.getBody().id);
+    bru.setVar("adminZoneId", res.getBody().zones[1].zoneId);
+  }
+}
+
+tests {
+  test("201 with both zones", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().zones).to.have.length(2);
+  });
+}

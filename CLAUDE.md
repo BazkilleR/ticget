@@ -113,6 +113,7 @@ CREATE TABLE users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username      TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),  -- 002_user_roles.sql
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -121,7 +122,9 @@ CREATE TABLE events (
   name       TEXT NOT NULL,
   venue      TEXT NOT NULL,
   starts_at  TIMESTAMPTZ NOT NULL,
-  sale_opens_at TIMESTAMPTZ NOT NULL
+  sale_opens_at TIMESTAMPTZ NOT NULL,
+  description TEXT,                                           -- 003_event_details.sql
+  CONSTRAINT events_schedule_chk CHECK (sale_opens_at <= starts_at)
 );
 
 CREATE TABLE zones (
@@ -149,6 +152,20 @@ CREATE TABLE bookings (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 005_booking_price.sql: bookings.unit_price INT ราคาโซน ณ ตอนจอง (worker อ่านจาก UPDATE zones ... RETURNING price)
+-- รายงานยอดขายใช้ unit_price เสมอ admin แก้ราคาภายหลังยอดเดิมไม่เปลี่ยน
+-- 004_tickets.sql: bookings.paid_at TIMESTAMPTZ และ e-ticket 1 ใบต่อ 1 ที่นั่ง ออกตอนจ่ายเงินใน statement เดียวกับการ CONFIRMED
+CREATE TABLE tickets (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id    UUID NOT NULL REFERENCES bookings(id),
+  seq           INT  NOT NULL CHECK (seq BETWEEN 1 AND 4),
+  code          TEXT UNIQUE NOT NULL,                -- 128 bit สุ่ม (hex 32 ตัว) อยู่ใน QR
+  checked_in_at TIMESTAMPTZ,                         -- ตั้งครั้งเดียวด้วย conditional UPDATE
+  checked_in_by UUID REFERENCES users(id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (booking_id, seq)
+);
+
 CREATE INDEX bookings_zone_pending_idx ON bookings (zone_id, expires_at) WHERE status = 'PENDING';
 CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 ```
@@ -166,7 +183,9 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 | GET | `/health` | health check สำหรับ ALB |
 | POST | `/auth/register` | `{ username, password }` → `201 { id, username }` |
 | POST | `/auth/login` | `{ username, password }` → `200 { token }` (JWT อายุ 1 ชม., payload `{ sub: userId }`) |
-| GET | `/events` | รายการ event ที่ยังไม่เริ่ม (cache 60 วินาที) |
+| GET | `/events` | รายการ event ที่ยังไม่เริ่ม `[{ id, name, venue, startsAt, saleOpensAt, minPrice }]` (cache 60 วินาที) |
+| GET | `/events?q&from&to&sale&maxPrice&sort&limit` | ค้นหา: `q` ค้นชื่อหรือสถานที่, `from`/`to` เป็นวันที่ตามเวลาไทย (รวมวันสุดท้าย), `sale=open\|upcoming`, `maxPrice` = มีโซนราคาไม่เกินนี้, `sort=date\|price`, `limit` ≤ 50 ถ้ามีตัวกรองจะไม่ cache |
+| GET | `/events/:id` | `{ id, name, venue, description, startsAt, saleOpensAt, minPrice }` (cache 60 วินาที) |
 | GET | `/events/:id/zones` | `[{ zoneId, name, price, available }]` (cache 3 วินาที) |
 
 ### ต้องมี `Authorization: Bearer <token>`
@@ -175,8 +194,38 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 |---|---|---|
 | POST | `/bookings` | `{ eventId, zoneId, quantity, requestId }` → `202 { bookingId, status: "QUEUED" }` |
 | GET | `/bookings/:id` | สถานะการจอง ถ้ายังไม่มีใน DB ตอบ `{ status: "QUEUED" }` |
+| GET | `/me` | `{ id, username, role }` ของตัวเอง (frontend ใช้ตัดสินว่าจะแสดงเมนู admin) |
 | GET | `/me/bookings` | ประวัติการจองของตัวเอง |
-| POST | `/bookings/:id/pay` | **mock** ชำระเงิน → `CONFIRMED` (ถ้ายังไม่หมดเวลา) |
+
+### Admin: ต้องมี token และ `users.role = 'admin'`
+
+ทุก route ใต้ `/admin` ใช้ `requireAuth` + `requireAdmin` (`src/middleware/admin.js`) ซึ่งอ่าน role จาก DB ทุกครั้ง ไม่ใส่ role ใน JWT เพื่อให้ถอดสิทธิ์มีผลทันที ไม่มีสิทธิ์ตอบ `403 forbidden`
+บัญชี admin สร้างได้ทางเดียวคือ `npm run seed` ด้วย env `ADMIN_USERNAME` / `ADMIN_PASSWORD` ไม่มี HTTP route ที่ให้สิทธิ์ admin
+
+| Method | Path | คำอธิบาย |
+|---|---|---|
+| GET | `/admin/events?include=past` | ทุก event พร้อม `zoneCount, capacity, sold, held, bookingCount` |
+| POST | `/admin/events` | `{ name, venue, description?, startsAt, saleOpensAt, zones: [{ name, price, capacity }] }` (1–10 zones) → `201` สร้าง event + zones ใน transaction เดียว |
+| GET | `/admin/events/:id` | event + zones พร้อม `reserved, available, sold, held, bookingCount` |
+| PATCH | `/admin/events/:id` | แก้ฟิลด์ใดก็ได้ของ event, `invalid_schedule` ถ้าวันเปิดขายเลยวันแสดง |
+| DELETE | `/admin/events/:id` | `204` หรือ `409 event_has_bookings` (มี booking แม้แต่ FAILED ก็ลบไม่ได้) |
+| POST | `/admin/events/:id/zones` | เพิ่มโซน, `409 zone_name_taken` |
+| PATCH | `/admin/zones/:id` | แก้ name/price/capacity, ลด capacity ต่ำกว่า reserved ได้ `409 capacity_below_reserved` |
+| DELETE | `/admin/zones/:id` | `204` หรือ `409 zone_has_bookings` |
+| GET | `/admin/tickets/:code` | ดูบัตรก่อนให้เข้างาน (ผู้จอง, โซน, ใบที่, ใช้แล้วหรือยัง) |
+| GET | `/admin/dashboard` | `{ revenue, ticketsSold, ticketsHeld, upcomingEvents, bookingsByStatus, failReasons, topEvents, recentSales, daily }` (`daily` = 14 วันล่าสุดตามเวลาไทย) |
+| GET | `/admin/events/:id/sales` | `{ event, totals, zones: [{ ..., sold, held, available, revenue, sellThrough }], daily }` |
+| GET | `/admin/reports/sales.csv?from&to&eventId` | CSV ของการจองที่ชำระแล้ว (UTF-8 + BOM, กัน CSV injection) |
+| POST | `/admin/tickets/check-in` | `{ code, eventId }` → `200` หรือ `409 ticket_already_used` / `409 ticket_wrong_event` / `404 ticket_not_found` |
+
+- วันเวลาต้องมี offset เสมอ (`Z` หรือ `+07:00`)
+- ลด capacity: ใน transaction เดียว `releaseExpired` → `SELECT ... FOR UPDATE` → ตรวจ → `UPDATE` โดยมี `CHECK (reserved <= capacity)` กันอีกชั้น
+- ลบ: พึ่ง foreign key ของ bookings ไม่ตรวจก่อนแล้วค่อยลบ จึงไม่มี race กับ worker
+- เปลี่ยนราคามีผลกับการจองใหม่เท่านั้น
+- ยอดขาย: sold/revenue = CONFIRMED เท่านั้น, held = PENDING ที่ยังไม่หมดเวลา, PENDING ที่หมดเวลาแล้วนับเป็น EXPIRED (กฎข้อ 6)
+- ทุกการแก้ไขล้าง `events:list`, `event:{id}`, `event:{id}:zones` และ log `admin_event_change` พร้อม `adminId`
+| POST | `/bookings/:id/pay` | **mock** ชำระเงิน → `CONFIRMED` (ถ้ายังไม่หมดเวลา) และออก e-ticket ตามจำนวนที่นั่ง |
+| GET | `/bookings/:id/tickets` | `{ bookingId, status, quantity, paidAt, event, zone, tickets: [{ ticketId, seq, code, checkedInAt }] }` ว่างจนกว่าจะจ่าย, ของคนอื่นได้ `404 booking_not_found` |
 
 ---
 
@@ -184,6 +233,7 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 
 1. **ห้ามรับ `userId` จาก request body** ให้ใช้จาก JWT (`req.userId`) เท่านั้น
 2. **ทุก query ที่อ่านการจองต้องมีเงื่อนไข `user_id`** กันไม่ให้ดูการจองของคนอื่น
+   ข้อยกเว้นเดียว: `src/services/admin*.js` ที่รวมยอดของทุกคน ใช้ได้เฉพาะผ่าน `src/routes/admin` ซึ่งบังคับ `requireAuth` + `requireAdmin` ทั้ง router
 3. **รหัสผ่านเก็บเป็น bcrypt hash (cost 12)** ห้ามเก็บหรือ log รหัสผ่านตรง ๆ
 4. Login ผิดให้ตอบข้อความเดียวกันเสมอ: `invalid_credentials` ไม่บอกว่าผิดที่ username หรือ password
 5. **การตัดโควตาต้องทำใน transaction ด้วย conditional UPDATE** (ดูหัวข้อ Worker) ห้ามใช้วิธี SELECT แล้วค่อย UPDATE แยกกัน
@@ -263,6 +313,11 @@ UPDATE bookings SET status = 'CONFIRMED', updated_at = now()
 - 0 แถว → `409 { error: "booking_not_payable" }`
 - `zones.reserved` ไม่ต้องเปลี่ยน เพราะนับไว้ตั้งแต่ PENDING แล้ว
 
+### e-Ticket และตรวจบัตร
+- จ่ายเงินแล้ว CONFIRMED + INSERT tickets ใน statement เดียว (CTE) จ่ายซ้ำหรือจ่ายพร้อมกันไม่ออกบัตรซ้ำ
+- QR เก็บ URL `/admin/check-in?code=<code>` ให้เจ้าหน้าที่สแกนด้วยกล้องมือถือแล้วเปิดหน้าตรวจบัตรได้เลย
+- เข้างาน: `UPDATE tickets ... WHERE code = $1 AND event_id ตรง AND CONFIRMED AND checked_in_at IS NULL` สแกนพร้อมกันหลายประตูผ่านได้ครั้งเดียว
+
 ### Cleanup: `src/jobs/expire.js`
 ทำแบบเดียวกับข้อ ② แต่ทุกโซน แล้วลบ cache ของ event ที่ได้รับผลกระทบ
 เป็นแค่งานเก็บกวาด รันทุก 15 นาทีได้ (บน AWS ย้ายไปเป็น Lambda + EventBridge Scheduler)
@@ -275,7 +330,8 @@ UPDATE bookings SET status = 'CONFIRMED', updated_at = now()
 
 | Key | TTL | ล้างเมื่อ |
 |---|---|---|
-| `events:list` | 60s | – |
+| `events:list` | 60s | admin แก้ event/zone |
+| `event:{id}` | 60s | admin แก้ event/zone |
 | `event:{id}:zones` | 3s | worker ตัดโควตา, cleanup คืนโควตา |
 
 ถ้า Redis ใช้ไม่ได้ ระบบต้องยังทำงานต่อได้โดยอ่านจาก DB ตรง (log warning)
@@ -297,6 +353,8 @@ SQS_BOOKING_QUEUE_URL=http://localhost:4566/000000000000/booking-queue.fifo
 JWT_SECRET=change-me-to-a-long-random-string
 BOOKING_HOLD_MINUTES=10
 MAX_TICKETS_PER_USER=4
+ADMIN_USERNAME=admin                       # ใช้โดย npm run seed เท่านั้น
+ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจริง บน AWS ส่งผ่าน shell ตอน seed
 ```
 
 ---
@@ -362,6 +420,15 @@ MAX_TICKETS_PER_USER=4
 - ✅ เสร็จเมื่อ: `npm --prefix frontend run build` ผ่าน ไล่ flow ครบบน local (PENDING → CONFIRMED, SOLD_OUT, USER_LIMIT, หมดเวลาแล้วจ่ายได้ 409) และบน Amplify `/api/health` กับ deep link ใช้งานได้
 
 ---
+
+### เฟส 10–15: ฟีเจอร์ที่เหลือตาม use case diagram (ไม่รวม tier สมาชิก, email, payment gateway จริง)
+- **เฟส 10** role admin (`users.role`, `requireAdmin` อ่านจาก DB), `GET /me`, สร้าง admin ตอน seed
+- **เฟส 11** ค้นหางานแสดง (`GET /events?q&from&to&sale&maxPrice&sort`), `GET /events/:id`, หน้า `/search`
+- **เฟส 12** admin จัดการงานแสดงและโซน (`/admin/events`, `/admin/zones`)
+- **เฟส 13** e-ticket + QR ออกตอนจ่ายเงิน, หน้าตรวจบัตร (`/admin/tickets/check-in`)
+- **เฟส 14** dashboard ยอดขาย, ยอดขายรายงาน, CSV (`unit_price` เก็บราคาตอนจอง), `npm run seed:demo`
+- **เฟส 15** Bruno ครบทุก endpoint, รัน load test ซ้ำ, เอกสาร, deploy
+- ✅ เสร็จเมื่อ: test ผ่านทั้งหมด, Bruno ผ่าน, load test ไม่ขายเกิน และไล่ flow ผู้ใช้ + admin บน AWS ได้
 
 ## Coding conventions
 

@@ -1,0 +1,30 @@
+meta {
+  name: Tickets
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/bookings/{{bookingId}}/tickets
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  // Used by "Admin check-in".
+  const tickets = res.getBody().tickets || [];
+  if (tickets.length) bru.setVar("ticketCode", tickets[0].code);
+}
+
+tests {
+  test("200; one ticket per seat once paid", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    if (body.status === "CONFIRMED") expect(body.tickets).to.have.length(body.quantity);
+    else expect(body.tickets).to.have.length(0);
+  });
+}

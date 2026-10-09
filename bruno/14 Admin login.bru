@@ -1,0 +1,29 @@
+meta {
+  name: Admin login
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "{{adminUsername}}",
+    "password": "{{adminPassword}}"
+  }
+}
+
+script:post-response {
+  // Kept apart from {{token}} so the user requests above still run as the normal user.
+  if (res.getStatus() === 200) bru.setVar("adminToken", res.getBody().token);
+}
+
+tests {
+  test("200 with a token (the account comes from npm run seed with ADMIN_PASSWORD)", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

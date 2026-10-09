@@ -47,4 +47,24 @@ async function login(username, password) {
   return { token };
 }
 
-module.exports = { register, login };
+// A still-valid token for a deleted user gets 401, so the client drops it and logs out.
+async function getUser(userId) {
+  const { rows } = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [userId]);
+  if (!rows[0]) throw new HttpError(401, 'unauthorized', 'User no longer exists');
+  return rows[0];
+}
+
+// Creates the admin account, or resets the password and role if the username already exists.
+// Only called from scripts/seed.js; there is deliberately no HTTP route that grants admin.
+async function upsertAdmin(username, password) {
+  const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+  const { rows } = await pool.query(
+    `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'admin')
+     ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'admin'
+     RETURNING id, username, role`,
+    [username, passwordHash],
+  );
+  return rows[0];
+}
+
+module.exports = { register, login, getUser, upsertAdmin };

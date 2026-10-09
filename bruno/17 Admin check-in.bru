@@ -1,0 +1,29 @@
+meta {
+  name: Admin check-in
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/admin/tickets/check-in
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "code": "{{ticketCode}}",
+    "eventId": {{eventId}}
+  }
+}
+
+tests {
+  test("200 the first time, 409 ticket_already_used on a re-run", function () {
+    expect([200, 409]).to.include(res.getStatus());
+    if (res.getStatus() === 409) expect(res.getBody().error).to.equal("ticket_already_used");
+  });
+}

@@ -68,9 +68,12 @@ const BOOKING_SELECT = `
          b.zone_id    AS "zoneId",
          z.name       AS "zoneName",
          b.quantity,
+         b.unit_price AS "unitPrice",
+         b.unit_price * b.quantity AS "totalPrice",
          CASE WHEN b.status = 'PENDING' AND b.expires_at < now() THEN 'EXPIRED' ELSE b.status END AS status,
          b.fail_reason AS "failReason",
          b.expires_at  AS "expiresAt",
+         b.paid_at     AS "paidAt",
          b.created_at  AS "createdAt"
     FROM bookings b
     JOIN events e ON e.id = b.event_id
@@ -96,14 +99,24 @@ async function listMyBookings(userId) {
 
 // Mock payment. The WHERE clause is the whole rule: only the owner, only while PENDING, only before the hold
 // expires. zones.reserved does not change, because PENDING seats were already counted.
+// Confirming and issuing one ticket per seat is a single statement, so a booking can never be CONFIRMED
+// without its tickets. A concurrent second pay waits on the row lock, then no longer matches PENDING, so
+// it issues nothing; UNIQUE (booking_id, seq) backs that up.
 async function payBooking(userId, bookingId) {
   const { rowCount } = await pool.query(
-    `UPDATE bookings SET status = 'CONFIRMED', updated_at = now()
-      WHERE id = $1 AND user_id = $2 AND status = 'PENDING' AND expires_at > now()`,
+    `WITH paid AS (
+       UPDATE bookings SET status = 'CONFIRMED', paid_at = now(), updated_at = now()
+        WHERE id = $1 AND user_id = $2 AND status = 'PENDING' AND expires_at > now()
+       RETURNING id, quantity
+     )
+     INSERT INTO tickets (booking_id, seq, code)
+     SELECT p.id, g, encode(gen_random_bytes(16), 'hex')
+       FROM paid p
+      CROSS JOIN LATERAL generate_series(1, p.quantity) AS g`,
     [bookingId, userId],
   );
-  if (rowCount === 1) {
-    logger.info({ bookingId }, 'booking confirmed');
+  if (rowCount > 0) {
+    logger.info({ bookingId, tickets: rowCount }, 'booking confirmed, tickets issued');
     return { bookingId, status: 'CONFIRMED' };
   }
 
@@ -116,6 +129,40 @@ async function payBooking(userId, bookingId) {
 
   // Unknown, someone else's, not processed yet, FAILED, or expired: all the same answer.
   throw new HttpError(409, 'booking_not_payable', 'Booking cannot be paid: not found, failed, or expired');
+}
+
+// The e-tickets of one of the caller's bookings, with what the ticket page prints. Empty until paid.
+async function getTickets(userId, bookingId) {
+  const { rows } = await pool.query(
+    `SELECT b.id AS "bookingId",
+            CASE WHEN b.status = 'PENDING' AND b.expires_at < now() THEN 'EXPIRED' ELSE b.status END AS status,
+            b.quantity, b.paid_at AS "paidAt",
+            e.id AS "eventId", e.name AS "eventName", e.venue, e.starts_at AS "startsAt",
+            z.id AS "zoneId", z.name AS "zoneName",
+            t.id AS "ticketId", t.seq, t.code, t.checked_in_at AS "checkedInAt"
+       FROM bookings b
+       JOIN events e ON e.id = b.event_id
+       JOIN zones z  ON z.id = b.zone_id
+       LEFT JOIN tickets t ON t.booking_id = b.id
+      WHERE b.id = $1 AND b.user_id = $2
+      ORDER BY t.seq`,
+    [bookingId, userId],
+  );
+  // Someone else's booking looks exactly like a missing one.
+  if (rows.length === 0) throw new HttpError(404, 'booking_not_found', 'Booking not found');
+
+  const [first] = rows;
+  return {
+    bookingId: first.bookingId,
+    status: first.status,
+    quantity: first.quantity,
+    paidAt: first.paidAt,
+    event: { id: first.eventId, name: first.eventName, venue: first.venue, startsAt: first.startsAt },
+    zone: { id: first.zoneId, name: first.zoneName },
+    tickets: rows
+      .filter((r) => r.ticketId)
+      .map(({ ticketId, seq, code, checkedInAt }) => ({ ticketId, seq, code, checkedInAt })),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -198,18 +245,21 @@ async function processBooking(rawMessage) {
     );
 
     let failReason = null;
+    let unitPrice = null;
     if (held.rows[0].held + quantity > config.maxTicketsPerUser) {
       failReason = 'USER_LIMIT';
     } else {
       // (4) Reserve seats only if they fit. The check and the increment are one atomic statement, and the
-      // row lock it takes makes concurrent reservations for this zone wait their turn (rule 5).
+      // row lock it takes makes concurrent reservations for this zone wait their turn (rule 5). The price
+      // read under that same lock is the one this booking pays.
       const reserved = await client.query(
         `UPDATE zones SET reserved = reserved + $2
           WHERE id = $1 AND reserved + $2 <= capacity
-         RETURNING reserved`,
+         RETURNING reserved, price`,
         [zoneId, quantity],
       );
       if (reserved.rowCount === 0) failReason = 'SOLD_OUT';
+      else unitPrice = reserved.rows[0].price;
     }
 
     // (5) Record the outcome.
@@ -222,9 +272,9 @@ async function processBooking(rawMessage) {
       result = { bookingId, status: 'FAILED', failReason };
     } else {
       await client.query(
-        `INSERT INTO bookings (id, request_id, user_id, event_id, zone_id, quantity, status, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', now() + make_interval(secs => $7::float8 * 60))`,
-        [bookingId, requestId, userId, eventId, zoneId, quantity, config.bookingHoldMinutes],
+        `INSERT INTO bookings (id, request_id, user_id, event_id, zone_id, quantity, status, unit_price, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7, now() + make_interval(secs => $8::float8 * 60))`,
+        [bookingId, requestId, userId, eventId, zoneId, quantity, unitPrice, config.bookingHoldMinutes],
       );
       result = { bookingId, status: 'PENDING' };
     }
@@ -253,6 +303,7 @@ module.exports = {
   getBooking,
   listMyBookings,
   payBooking,
+  getTickets,
   processBooking,
   releaseExpired,
 };

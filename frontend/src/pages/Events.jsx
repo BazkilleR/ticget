@@ -1,8 +1,43 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { request, errorMessage } from '../api/client';
-import { ErrorBanner, Spinner } from '../components/common';
-import { formatDateTime } from '../format';
+import { ErrorBanner, Icon, Poster, Spinner } from '../components/common';
+import { EventCard, SaleChip } from '../components/EventCard';
+import { formatDate, formatTime, isSaleOpen } from '../format';
+
+function Hero({ event }) {
+  return (
+    <section className="hero">
+      <div className="wrap hero-inner">
+        <Link to={`/events/${event.id}`} className="hero-poster">
+          <Poster event={event} variant="hero" />
+        </Link>
+        <div className="hero-info">
+          <SaleChip event={event} />
+          <h1>{event.name}</h1>
+          <ul className="meta meta-light">
+            <li>
+              <Icon name="calendar" />
+              {formatDate(event.startsAt)}
+            </li>
+            <li>
+              <Icon name="clock" />
+              {formatTime(event.startsAt)}
+            </li>
+            <li>
+              <Icon name="pin" />
+              {event.venue}
+            </li>
+          </ul>
+          <Link to={`/events/${event.id}`} className="btn btn-primary btn-lg">
+            <Icon name="ticket" />
+            {isSaleOpen(event) ? 'ซื้อบัตร' : 'ดูรายละเอียด'}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Events() {
   const [events, setEvents] = useState(null);
@@ -18,29 +53,36 @@ export default function Events() {
     return () => controller.abort();
   }, []);
 
+  const featured = events?.find(isSaleOpen) || events?.[0];
+
   return (
-    <section>
-      <h1>อีเวนต์ที่กำลังจะมาถึง</h1>
-      <ErrorBanner message={error} />
-      {!events && !error && <Spinner />}
-      {events?.length === 0 && <p className="empty muted">ยังไม่มีอีเวนต์</p>}
-      <ul className="grid">
-        {events?.map((event) => {
-          const saleOpen = new Date(event.saleOpensAt) <= new Date();
-          return (
-            <li key={event.id}>
-              <Link to={`/events/${event.id}`} className="card card-link event-card">
-                <h2>{event.name}</h2>
-                <p className="muted">{event.venue}</p>
-                <p>{formatDateTime(event.startsAt)}</p>
-                <span className={`badge ${saleOpen ? 'badge-confirmed' : 'badge-queued'}`}>
-                  {saleOpen ? 'เปิดขายแล้ว' : `เปิดขาย ${formatDateTime(event.saleOpensAt)}`}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <>
+      {featured && <Hero event={featured} />}
+      <section className="wrap section">
+        <div className="section-head">
+          <h2 className="section-title">อีเวนต์ทั้งหมด</h2>
+          <nav className="quick-filters" aria-label="ตัวกรองด่วน">
+            <Link to="/search?sale=open" className="filter-chip">
+              เปิดขายแล้ว
+            </Link>
+            <Link to="/search?sale=upcoming" className="filter-chip">
+              เร็ว ๆ นี้
+            </Link>
+            <Link to="/search" className="filter-chip">
+              <Icon name="search" size={15} />
+              ค้นหาเพิ่มเติม
+            </Link>
+          </nav>
+        </div>
+        <ErrorBanner message={error} />
+        {!events && !error && <Spinner />}
+        {events?.length === 0 && <p className="empty">ยังไม่มีอีเวนต์ที่กำลังจะมาถึง</p>}
+        <ul className="event-grid">
+          {events?.map((event) => (
+            <EventCard key={event.id} event={event} />
+          ))}
+        </ul>
+      </section>
+    </>
   );
 }

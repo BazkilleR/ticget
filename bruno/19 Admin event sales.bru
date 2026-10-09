@@ -1,0 +1,23 @@
+meta {
+  name: Admin event sales
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/admin/events/{{eventId}}/sales
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+tests {
+  test("200; zone totals add up", function () {
+    expect(res.getStatus()).to.equal(200);
+    const { zones, totals } = res.getBody();
+    expect(zones.reduce((n, z) => n + z.sold, 0)).to.equal(totals.sold);
+  });
+}

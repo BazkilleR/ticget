@@ -43,12 +43,35 @@ export function AuthProvider({ children }) {
     setAuth(null);
   }, []);
 
+  // username and role come from GET /me, not the form, so the header shows the name as stored.
   const login = useCallback(async (username, password) => {
     const { token } = await request('/auth/login', { method: 'POST', body: { username, password } });
-    const value = { token, username };
+    const me = await request('/me', { token });
+    const value = { token, username: me.username, role: me.role };
     save(value);
     setAuth(value);
   }, []);
+
+  // Re-read the role when a saved session is restored: it may have changed since it was stored.
+  // The role only decides which menus to show; the server checks it again on every admin call.
+  const token = auth?.token;
+  useEffect(() => {
+    if (!token) return undefined;
+    const controller = new AbortController();
+    request('/me', { token, signal: controller.signal })
+      .then((me) => {
+        setAuth((prev) => {
+          if (prev?.token !== token) return prev;
+          const next = { ...prev, username: me.username, role: me.role };
+          save(next);
+          return next;
+        });
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401) logout();
+      });
+    return () => controller.abort();
+  }, [token, logout]);
 
   useEffect(() => {
     if (!auth) return undefined;
@@ -59,7 +82,13 @@ export function AuthProvider({ children }) {
   }, [auth, logout]);
 
   const value = useMemo(
-    () => ({ token: auth?.token ?? null, username: auth?.username ?? null, login, logout }),
+    () => ({
+      token: auth?.token ?? null,
+      username: auth?.username ?? null,
+      isAdmin: auth?.role === 'admin',
+      login,
+      logout,
+    }),
     [auth, login, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

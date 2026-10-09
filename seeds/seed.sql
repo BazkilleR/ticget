@@ -1,17 +1,128 @@
 -- Development/test data. Wipes all tables first so it can be re-run and IDs are always the same:
--- events 1-2, zones 1-6.
-TRUNCATE bookings, zones, events, users RESTART IDENTITY CASCADE;
+-- events 1-20, zones in insertion order (event 1 = zones 1-3, event 2 = zones 4-6).
+-- Event and artist names are made up; venues are real Thai venues.
+TRUNCATE tickets, bookings, zones, events, users RESTART IDENTITY CASCADE;
 
-INSERT INTO events (name, venue, starts_at, sale_opens_at) VALUES
-  -- Event 1: on sale now.
-  ('Concert A', 'Impact Arena',       now() + interval '30 days', now() - interval '1 day'),
-  -- Event 2: sale opens in 7 days, for testing that early bookings are rejected.
-  ('Concert B', 'Thunder Dome',       now() + interval '60 days', now() + interval '7 days');
+-- Bangkok wall-clock time `days` days from today, e.g. bkk(30, '19:30'), so shows start at realistic
+-- hours and the data never goes stale. pg_temp: gone when the seed's connection closes.
+CREATE OR REPLACE FUNCTION pg_temp.bkk(days int, hhmm text) RETURNS timestamptz
+LANGUAGE sql AS $$
+  SELECT ((now() AT TIME ZONE 'Asia/Bangkok')::date + days + hhmm::time) AT TIME ZONE 'Asia/Bangkok'
+$$;
+
+INSERT INTO events (name, venue, description, starts_at, sale_opens_at) VALUES
+  -- 1: on sale now. Its zones are fixed: VIP (5 seats, sold-out tests), Standard (k6), GA (Bruno zoneId 3).
+  ('Midnight Bloom Live in Bangkok 2026', 'อิมแพ็ค อารีน่า เมืองทองธานี',
+   E'คอนเสิร์ตเต็มรูปแบบครั้งแรกในไทยของวง Midnight Bloom พร้อมโปรดักชันแสงสีชุดใหม่และเพลงจากอัลบั้มล่าสุด\nประตูเปิด 17:00 น. · ผู้ชมอายุต่ำกว่า 15 ปีต้องมีผู้ปกครองมาด้วย',
+   pg_temp.bkk(30, '19:00'), pg_temp.bkk(-1, '10:00')),
+  -- 2: sale opens in 7 days, for testing that early bookings are rejected.
+  ('The Velvet Echo World Tour 2026', 'ธันเดอร์โดม เมืองทองธานี',
+   E'ทัวร์รอบโลกของ The Velvet Echo แวะกรุงเทพฯ เพียงรอบเดียว\nจำกัดการซื้อ 4 ใบต่อบัญชี · ห้ามนำกล้องมืออาชีพเข้างาน',
+   pg_temp.bkk(60, '19:30'), pg_temp.bkk(7, '10:00')),
+  ('Muay Thai Super Fight Night', 'เวทีมวยราชดำเนิน',
+   E'ศึกมวยไทยคู่เอก 8 คู่ ชิงเข็มขัดแชมป์รุ่นไลต์เวต พร้อมพิธีไหว้ครูแบบดั้งเดิม\nประตูเปิด 17:30 น.',
+   pg_temp.bkk(2, '18:30'), pg_temp.bkk(-6, '10:00')),
+  ('Acoustic Sunset Session', 'ลานริมน้ำ ไอคอนสยาม',
+   E'ดนตรีอะคูสติกริมแม่น้ำเจ้าพระยายามพระอาทิตย์ตก กับศิลปินอินดี้ 4 วง\nงานกลางแจ้ง หากฝนตกจะย้ายเข้าฮอลล์ชั้น 8',
+   pg_temp.bkk(5, '17:30'), pg_temp.bkk(-20, '10:00')),
+  ('Indie Lab Showcase Vol.7', 'ลิโด้ คอนเน็คท์ สยามสแควร์',
+   E'เวทีโชว์เคสของวงดนตรีหน้าใหม่ 6 วงที่ผ่านการคัดเลือกจากโครงการ Indie Lab\nบัตรยืนทั้งหมด ไม่มีที่นั่ง',
+   pg_temp.bkk(8, '19:00'), pg_temp.bkk(-14, '12:00')),
+  ('Bangkok Jazz Weekend', 'สวนป่าเบญจกิติ',
+   E'เทศกาลแจ๊สกลางสวน บรรยากาศปิกนิกบนสนามหญ้า มีโซนอาหารและเครื่องดื่มภายในงาน\nอนุญาตให้นำเสื่อมาเองได้ ห้ามนำสัตว์เลี้ยง',
+   pg_temp.bkk(12, '16:00'), pg_temp.bkk(-10, '10:00')),
+  ('Little Scientists Live Show', 'ไบเทค บางนา ฮอลล์ 101',
+   E'โชว์วิทยาศาสตร์สำหรับครอบครัว ทดลองสด ระเบิดฟอง และหุ่นยนต์ยักษ์ เหมาะสำหรับเด็กอายุ 4 ปีขึ้นไป\nเด็กทุกคนต้องมีบัตรของตัวเอง',
+   pg_temp.bkk(15, '13:00'), pg_temp.bkk(-30, '10:00')),
+  ('เดี่ยวหัวเราะ ไม่มีวันหยุด', 'สามย่านมิตรทาวน์ ฮอลล์',
+   E'สแตนด์อัพคอมเมดี้ 2 ชั่วโมงเต็ม ว่าด้วยชีวิตคนทำงานในเมืองใหญ่\nเนื้อหาเหมาะสำหรับผู้ชมอายุ 18 ปีขึ้นไป · ห้ามบันทึกภาพและเสียง',
+   pg_temp.bkk(18, '20:00'), pg_temp.bkk(-7, '10:00')),
+  ('ม่านมุก เดอะมิวสิคัล', 'เมืองไทย รัชดาลัย เธียเตอร์',
+   E'ละครเวทีมิวสิคัลเรื่องราวความรักข้ามกาลเวลาของหญิงสาวแห่งกรุงศรีอยุธยา ความยาว 3 ชั่วโมงรวมพักครึ่ง\nกรุณามาถึงก่อนเวลาแสดง 30 นาที ไม่อนุญาตให้เข้าชมหลังเริ่มการแสดง',
+   pg_temp.bkk(20, '19:30'), pg_temp.bkk(-20, '10:00')),
+  ('Hip-Hop Block Party BKK', 'วอยซ์ สเปซ',
+   E'ปาร์ตี้ฮิปฮอปทั้งคืนกับดีเจและแร็ปเปอร์กว่า 10 ชีวิต พร้อมการแข่งขันแบทเทิลแร็ปรอบชิง\nผู้เข้างานต้องอายุ 20 ปีขึ้นไป แสดงบัตรประชาชนที่หน้างาน',
+   pg_temp.bkk(22, '20:00'), pg_temp.bkk(-2, '12:00')),
+  ('Anime Symphony in Concert', 'ศูนย์การประชุมแห่งชาติสิริกิติ์ ฮอลล์ 1',
+   E'วงออร์เคสตรา 70 ชิ้นบรรเลงเพลงประกอบอนิเมะยอดนิยม พร้อมภาพประกอบบนจอยักษ์\nแต่งคอสเพลย์มาได้ แต่ห้ามนำอาวุธจำลองเข้าฮอลล์',
+   pg_temp.bkk(27, '15:00'), pg_temp.bkk(-12, '10:00')),
+  ('Chopin Nocturnes Piano Recital', 'สยามพิฆเนศ เดอะ ไลฟ์ เธียเตอร์',
+   E'ค่ำคืนแห่งบทเพลงของโชแปงโดยนักเปียโนรางวัลระดับนานาชาติ\nแต่งกายสุภาพ · งดใช้โทรศัพท์ระหว่างการแสดง',
+   pg_temp.bkk(28, '19:30'), pg_temp.bkk(-9, '10:00')),
+  ('Siam Philharmonic Gala: Beethoven Symphony No. 9', 'หอประชุมใหญ่ ศูนย์วัฒนธรรมแห่งประเทศไทย',
+   E'คอนเสิร์ตกาลาประจำปี บรรเลงซิมโฟนีหมายเลข 9 พร้อมคณะนักร้องประสานเสียง 120 คน\nไม่อนุญาตให้เด็กอายุต่ำกว่า 7 ปีเข้าชม',
+   pg_temp.bkk(33, '19:30'), pg_temp.bkk(-15, '10:00')),
+  ('นาฏกรรมสยาม: รามเกียรติ์ ตอน ศึกพรหมาสตร์', 'โรงละครแห่งชาติ',
+   E'การแสดงโขนเต็มรูปแบบ พร้อมฉากและเทคนิคแสงสีร่วมสมัย มีคำบรรยายภาษาอังกฤษ\nเหมาะสำหรับทุกวัย',
+   pg_temp.bkk(36, '14:00'), pg_temp.bkk(-25, '10:00')),
+  ('LUMINA 1st Fan Meeting in Bangkok', 'ยูเนี่ยน ฮอลล์ ยูเนี่ยน มอลล์',
+   E'แฟนมีตติ้งครั้งแรกในไทยของ LUMINA พร้อมมินิคอนเสิร์ตและเกมกับแฟนคลับ\nบัตร Soundcheck VIP ได้ชมการซ้อมก่อนงานและรับของที่ระลึก',
+   pg_temp.bkk(40, '18:00'), pg_temp.bkk(3, '12:00')),
+  ('ลูกทุ่งมหาสนุก รวมพลคนรักเพลงไทย', 'ราชมังคลากีฬาสถาน',
+   E'คอนเสิร์ตลูกทุ่งครั้งใหญ่แห่งปี รวมศิลปินลูกทุ่งและหมอลำกว่า 20 ชีวิต ยาวกว่า 5 ชั่วโมง\nประตูเปิด 15:00 น. · มีที่จอดรถจำกัด แนะนำให้เดินทางด้วยรถสาธารณะ',
+   pg_temp.bkk(45, '18:00'), pg_temp.bkk(-5, '10:00')),
+  ('Lanna Lantern Music Night', 'กาดเธียเตอร์ เชียงใหม่',
+   E'คอนเสิร์ตบรรยากาศล้านนา ผสานดนตรีพื้นเมืองกับวงสตริง พร้อมปล่อยโคมช่วงท้ายงาน\nรถรับส่งฟรีจากประตูท่าแพทุก 30 นาที',
+   pg_temp.bkk(50, '19:00'), pg_temp.bkk(-3, '10:00')),
+  ('Neon Pulse EDM Festival 2026', 'หาดพัทยากลาง ชลบุรี',
+   E'เทศกาลดนตรีอิเล็กทรอนิกส์ริมทะเล 3 เวที ดีเจระดับโลกกว่า 15 คน\nผู้เข้างานต้องอายุ 20 ปีขึ้นไป · ห้ามนำเครื่องดื่มจากภายนอก',
+   pg_temp.bkk(75, '16:00'), pg_temp.bkk(14, '12:00')),
+  ('Rock Legends Reunion 2026', 'บางกอก อารีน่า หนองจอก',
+   E'การกลับมารวมตัวครั้งประวัติศาสตร์ของวงร็อกยุค 90 ฉลองครบรอบ 30 ปี\nบัตร Standing Pit ไม่มีที่นั่ง',
+   pg_temp.bkk(90, '19:00'), pg_temp.bkk(21, '10:00')),
+  ('Phuket Ocean Music Festival', 'หาดป่าตอง ภูเก็ต',
+   E'เทศกาลดนตรีริมชายหาด 2 เวที ตั้งแต่บ่ายจนเที่ยงคืน พร้อมตลาดอาหารท้องถิ่น\nงานกลางแจ้ง จัดขึ้นทั้งฝนตกและแดดออก',
+   pg_temp.bkk(110, '16:00'), pg_temp.bkk(30, '10:00'));
 
 INSERT INTO zones (event_id, name, price, capacity) VALUES
-  (1, 'VIP',      5000,   5),   -- zone 1: tiny, for sold-out tests
-  (1, 'Standard', 2500, 100),   -- zone 2: k6 load test (1,000 users, 100 tickets)
-  (1, 'GA',       1500, 500),   -- zone 3
-  (2, 'VIP',      6000,  50),   -- zone 4
-  (2, 'Standard', 3000, 200),   -- zone 5
-  (2, 'GA',       1800, 800);   -- zone 6
+  (1,  'VIP',               5000,     5),   -- zone 1: tiny, for sold-out tests
+  (1,  'Standard',          2500,   100),   -- zone 2: k6 load test (1,000 users, 100 tickets)
+  (1,  'GA',                1500,   500),   -- zone 3: Bruno's zoneId
+  (2,  'VIP',               6000,    50),   -- zone 4
+  (2,  'Standard',          3000,   200),   -- zone 5
+  (2,  'GA',                1800,   800),   -- zone 6
+  (3,  'Ringside',          3500,   200),
+  (3,  'ชั้น 2',             2000,   600),
+  (3,  'ชั้น 3',             1000,  1200),
+  (4,  'Riverside Seat',    1200,   150),
+  (4,  'Standing',           600,   500),
+  (5,  'บัตรยืน',              650,   400),
+  (6,  'หน้าเวที',            1800,   300),
+  (6,  'ปิกนิกสนามหญ้า',        900,  1500),
+  (7,  'โซนหน้า',              790,   400),
+  (7,  'โซนหลัง',              490,   800),
+  (8,  'แถวหน้า',             2500,   100),
+  (8,  'ทั่วไป',              1500,   700),
+  (9,  'Platinum',          4800,   150),
+  (9,  'Gold',              3500,   400),
+  (9,  'Silver',            2500,   600),
+  (9,  'Balcony',           1500,   300),
+  (10, 'VIP Lounge',        2500,   100),
+  (10, 'GA',                 990,   900),
+  (11, 'Premium',           3900,   400),
+  (11, 'Standard',          2500,  1200),
+  (11, 'Economy',           1500,   800),
+  (12, 'Premium',           2800,   120),
+  (12, 'Regular',           1600,   300),
+  (13, 'Premium',           3000,   200),
+  (13, 'Stalls',            1800,   800),
+  (13, 'Balcony',           1000,   600),
+  (14, 'ชั้นล่าง',             1200,   500),
+  (14, 'ชั้นบน',               600,   400),
+  (15, 'Soundcheck VIP',    6800,   150),
+  (15, 'Zone A',            4800,   800),
+  (15, 'Zone B',            3200,  1200),
+  (16, 'VVIP',              4500,   200),
+  (16, 'ที่นั่ง A',            2500,  2000),
+  (16, 'ที่นั่ง B',            1500,  5000),
+  (16, 'บัตรยืน',              800, 10000),
+  (17, 'Front',             2200,   200),
+  (17, 'Middle',            1500,   400),
+  (17, 'Back',               900,   400),
+  (18, 'VIP Deck',          6500,   300),
+  (18, 'GA',                2900,  8000),
+  (19, 'Standing Pit',      4500,  1000),
+  (19, 'Seat A',            3500,  3000),
+  (19, 'Seat B',            2000,  4000),
+  (20, 'VIP',               5500,   500),
+  (20, 'GA',                2500,  6000);

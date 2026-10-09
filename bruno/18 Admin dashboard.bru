@@ -1,0 +1,23 @@
+meta {
+  name: Admin dashboard
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/admin/dashboard
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+tests {
+  test("200 with totals and 14 days of sales", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().revenue).to.be.a("number");
+    expect(res.getBody().daily).to.have.length(14);
+  });
+}

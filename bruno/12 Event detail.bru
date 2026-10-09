@@ -1,0 +1,19 @@
+meta {
+  name: Event detail
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/events/{{eventId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("200 with description and minPrice", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property("description");
+    expect(res.getBody()).to.have.property("minPrice");
+  });
+}

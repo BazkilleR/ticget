@@ -1,0 +1,23 @@
+meta {
+  name: Me
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("200 with id, username and role user", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().role).to.equal("user");
+    expect(res.getBody()).to.not.have.property("password_hash");
+  });
+}
