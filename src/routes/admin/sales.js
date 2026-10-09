@@ -32,7 +32,8 @@ router.get('/events/:id/sales', validate({ params: idParams }), asyncHandler(asy
 
 router.get('/reports/sales.csv', validate({ query: reportQuery }), asyncHandler(async (req, res) => {
   const csv = await adminSales.salesCsv(req.query);
-  const day = new Date().toISOString().slice(0, 10);
+  // Thai calendar date in the file name: just after midnight in Bangkok it is still yesterday in UTC.
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
   res
     .type('text/csv; charset=utf-8')
     .attachment(`sales-${day}.csv`)

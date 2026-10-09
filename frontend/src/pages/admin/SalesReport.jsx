@@ -18,7 +18,7 @@ export default function SalesReport({ events, eventId: fixedEventId }) {
     setBusy(true);
     setError(null);
     const query = new URLSearchParams(Object.entries({ from, to, eventId }).filter(([, v]) => v));
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
     try {
       await downloadFile(`/admin/reports/sales.csv?${query}`, {
         token,

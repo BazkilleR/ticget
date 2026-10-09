@@ -203,7 +203,7 @@ describe('GET /admin/reports/sales.csv', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/^text\/csv; charset=utf-8/);
-    expect(res.headers['content-disposition']).toMatch(/^attachment; filename="sales-\d{4}-\d{2}-\d{2}\.csv"$/);
+    expect(res.headers['content-disposition']).toBe(`attachment; filename="sales-${await bangkokDate(0)}.csv"`);
     expect(res.body.startsWith('﻿')).toBe(true);
     const rows = rowsOf(res.body);
     expect(rows[0]).toBe('booking_id,paid_at,event,zone,username,quantity,unit_price,total');
