@@ -31,7 +31,7 @@ src/
 ├─ middleware/         auth (JWT), validate, error
 └─ jobs/expire.js      cleanup of expired holds (a Lambda on AWS)
 migrations/            database schema
-seeds/                 sample data: 2 events with 3 zones each
+seeds/                 sample data: 20 events, 51 zones (event 1 holds the 5-seat and k6 zones)
 scripts/               migrate, seed, LocalStack and test-database setup
 tests/                 jest + supertest integration tests
 certs/                 RDS CA bundle for TLS on AWS
