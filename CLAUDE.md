@@ -122,7 +122,9 @@ CREATE TABLE events (
   name       TEXT NOT NULL,
   venue      TEXT NOT NULL,
   starts_at  TIMESTAMPTZ NOT NULL,
-  sale_opens_at TIMESTAMPTZ NOT NULL
+  sale_opens_at TIMESTAMPTZ NOT NULL,
+  description TEXT,                                           -- 003_event_details.sql
+  CONSTRAINT events_schedule_chk CHECK (sale_opens_at <= starts_at)
 );
 
 CREATE TABLE zones (
@@ -167,7 +169,9 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 | GET | `/health` | health check สำหรับ ALB |
 | POST | `/auth/register` | `{ username, password }` → `201 { id, username }` |
 | POST | `/auth/login` | `{ username, password }` → `200 { token }` (JWT อายุ 1 ชม., payload `{ sub: userId }`) |
-| GET | `/events` | รายการ event ที่ยังไม่เริ่ม (cache 60 วินาที) |
+| GET | `/events` | รายการ event ที่ยังไม่เริ่ม `[{ id, name, venue, startsAt, saleOpensAt, minPrice }]` (cache 60 วินาที) |
+| GET | `/events?q&from&to&sale&maxPrice&sort&limit` | ค้นหา: `q` ค้นชื่อหรือสถานที่, `from`/`to` เป็นวันที่ตามเวลาไทย (รวมวันสุดท้าย), `sale=open\|upcoming`, `maxPrice` = มีโซนราคาไม่เกินนี้, `sort=date\|price`, `limit` ≤ 50 ถ้ามีตัวกรองจะไม่ cache |
+| GET | `/events/:id` | `{ id, name, venue, description, startsAt, saleOpensAt, minPrice }` (cache 60 วินาที) |
 | GET | `/events/:id/zones` | `[{ zoneId, name, price, available }]` (cache 3 วินาที) |
 
 ### ต้องมี `Authorization: Bearer <token>`
@@ -282,7 +286,8 @@ UPDATE bookings SET status = 'CONFIRMED', updated_at = now()
 
 | Key | TTL | ล้างเมื่อ |
 |---|---|---|
-| `events:list` | 60s | – |
+| `events:list` | 60s | admin แก้ event/zone |
+| `event:{id}` | 60s | admin แก้ event/zone |
 | `event:{id}:zones` | 3s | worker ตัดโควตา, cleanup คืนโควตา |
 
 ถ้า Redis ใช้ไม่ได้ ระบบต้องยังทำงานต่อได้โดยอ่านจาก DB ตรง (log warning)

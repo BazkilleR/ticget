@@ -104,10 +104,12 @@ export default function EventZones() {
   const attempt = useRef(null);
 
   useEffect(() => {
-    // /events only lists events that have not started; a missing entry just means no header details.
-    request('/events')
-      .then((list) => setEvent(list.find((e) => e.id === eventId) || null))
+    // Header details only; if this fails the zones request reports the error.
+    const controller = new AbortController();
+    request(`/events/${eventId}`, { signal: controller.signal })
+      .then(setEvent)
       .catch(() => {});
+    return () => controller.abort();
   }, [eventId]);
 
   // Availability changes while people book, so poll it. The API caches zones for 3 s, which keeps this cheap.
@@ -190,6 +192,12 @@ export default function EventZones() {
 
       <section className="wrap section">
         <Steps current={0} />
+        {event?.description && (
+          <div className="panel event-description">
+            <h2 className="panel-title">รายละเอียดงาน</h2>
+            <p>{event.description}</p>
+          </div>
+        )}
         <ErrorBanner message={loadError} />
         {!zones && !loadError && <Spinner />}
 

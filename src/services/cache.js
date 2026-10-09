@@ -5,6 +5,7 @@ const logger = require('../logger');
 
 const keys = {
   eventsList: 'events:list',
+  event: (eventId) => `event:${eventId}`,
   eventZones: (eventId) => `event:${eventId}:zones`,
 };
 

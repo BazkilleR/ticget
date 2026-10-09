@@ -12,18 +12,18 @@ const SLOW_QUEUE_ATTEMPTS = 20;
 const STEP_FOR_STATUS = { QUEUED: 1, FAILED: 1, PENDING: 2, EXPIRED: 2, CONFIRMED: 4 };
 
 // The booking itself only carries names, so fetch the public event and zone details for the ticket (venue,
-// date, price). Best effort: an event that has started drops out of /events and the ticket just shows less.
+// date, price). Best effort: if either request fails the ticket just shows less.
 function useTicketDetails(eventId, zoneId) {
   const [details, setDetails] = useState({});
   useEffect(() => {
     if (!eventId) return undefined;
     const controller = new AbortController();
     const { signal } = controller;
-    Promise.allSettled([request('/events', { signal }), request(`/events/${eventId}/zones`, { signal })]).then(
-      ([events, zones]) => {
+    Promise.allSettled([request(`/events/${eventId}`, { signal }), request(`/events/${eventId}/zones`, { signal })]).then(
+      ([event, zones]) => {
         if (signal.aborted) return;
         setDetails({
-          event: events.value?.find((e) => e.id === eventId),
+          event: event.value,
           zone: zones.value?.find((z) => z.zoneId === zoneId),
         });
       },

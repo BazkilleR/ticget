@@ -38,7 +38,18 @@ describe('GET /events', () => {
       venue: 'Test Venue',
       startsAt: expect.any(String),
       saleOpensAt: expect.any(String),
+      minPrice: null,
     });
+  });
+
+  test('minPrice is the cheapest zone', async () => {
+    const eventId = await insertEvent('Concert', '30 days');
+    await insertZone(eventId, 'VIP', { price: 5000 });
+    await insertZone(eventId, 'GA', { price: 1500 });
+
+    const res = await request(app).get('/events');
+
+    expect(res.body[0].minPrice).toBe(1500);
   });
 
   test('is cached in events:list for 60 seconds', async () => {

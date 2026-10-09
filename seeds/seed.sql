@@ -2,11 +2,15 @@
 -- events 1-2, zones 1-6.
 TRUNCATE bookings, zones, events, users RESTART IDENTITY CASCADE;
 
-INSERT INTO events (name, venue, starts_at, sale_opens_at) VALUES
+INSERT INTO events (name, venue, description, starts_at, sale_opens_at) VALUES
   -- Event 1: on sale now.
-  ('Concert A', 'Impact Arena',       now() + interval '30 days', now() - interval '1 day'),
+  ('Concert A', 'Impact Arena',
+   'คอนเสิร์ตใหญ่ประจำปี ประตูเปิด 17:00 น. ห้ามนำอาหารและเครื่องดื่มจากภายนอกเข้างาน',
+   now() + interval '30 days', now() - interval '1 day'),
   -- Event 2: sale opens in 7 days, for testing that early bookings are rejected.
-  ('Concert B', 'Thunder Dome',       now() + interval '60 days', now() + interval '7 days');
+  ('Concert B', 'Thunder Dome',
+   'โชว์พิเศษรอบเดียวเท่านั้น เปิดขายบัตรล่วงหน้า 7 วัน',
+   now() + interval '60 days', now() + interval '7 days');
 
 INSERT INTO zones (event_id, name, price, capacity) VALUES
   (1, 'VIP',      5000,   5),   -- zone 1: tiny, for sold-out tests

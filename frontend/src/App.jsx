@@ -1,4 +1,4 @@
-import { Link, NavLink, Route, Routes } from 'react-router';
+import { Link, NavLink, Route, Routes, useNavigate } from 'react-router';
 import { useAuth } from './auth/AuthContext';
 import { AdminRoute, Icon, ProtectedRoute } from './components/common';
 import { Login, Register } from './pages/Auth';
@@ -6,6 +6,7 @@ import Events from './pages/Events';
 import EventZones from './pages/EventZones';
 import BookingStatus from './pages/BookingStatus';
 import MyBookings from './pages/MyBookings';
+import Search from './pages/Search';
 import AdminHome from './pages/admin/AdminHome';
 
 function Logo() {
@@ -21,6 +22,23 @@ function Logo() {
   );
 }
 
+// Submitting opens the search page; the search page itself filters as you type.
+function HeaderSearch() {
+  const navigate = useNavigate();
+  function handleSubmit(e) {
+    e.preventDefault();
+    const q = new FormData(e.currentTarget).get('q').trim();
+    navigate(q ? `/search?${new URLSearchParams({ q })}` : '/search');
+    e.currentTarget.reset();
+  }
+  return (
+    <form className="header-search" role="search" onSubmit={handleSubmit}>
+      <Icon name="search" size={16} />
+      <input type="search" name="q" placeholder="ค้นหางานแสดง สถานที่" aria-label="ค้นหางานแสดง" maxLength={100} />
+    </form>
+  );
+}
+
 export default function App() {
   const { username, isAdmin, logout } = useAuth();
 
@@ -30,6 +48,7 @@ export default function App() {
         <div className="topbar">
           <div className="wrap topbar-inner">
             <Logo />
+            <HeaderSearch />
             <div className="account">
               {username ? (
                 <>
@@ -60,6 +79,7 @@ export default function App() {
             <NavLink to="/" end>
               หน้าแรก
             </NavLink>
+            <NavLink to="/search">ค้นหา</NavLink>
             <NavLink to="/me/bookings">บัตรของฉัน</NavLink>
             {isAdmin && <NavLink to="/admin">ผู้ดูแลระบบ</NavLink>}
           </div>
@@ -69,6 +89,7 @@ export default function App() {
       <main className="site-main">
         <Routes>
           <Route path="/" element={<Events />} />
+          <Route path="/search" element={<Search />} />
           <Route path="/events/:id" element={<EventZones />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

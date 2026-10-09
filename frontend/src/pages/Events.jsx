@@ -2,15 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { request, errorMessage } from '../api/client';
 import { ErrorBanner, Icon, Poster, Spinner } from '../components/common';
-import { formatDate, formatDateTime, formatTime, isSaleOpen } from '../format';
-
-function SaleChip({ event }) {
-  return isSaleOpen(event) ? (
-    <span className="chip chip-open">เปิดขายแล้ว</span>
-  ) : (
-    <span className="chip chip-soon">เปิดขาย {formatDateTime(event.saleOpensAt)}</span>
-  );
-}
+import { EventCard, SaleChip } from '../components/EventCard';
+import { formatDate, formatTime, isSaleOpen } from '../format';
 
 function Hero({ event }) {
   return (
@@ -46,28 +39,6 @@ function Hero({ event }) {
   );
 }
 
-function EventCard({ event }) {
-  const open = isSaleOpen(event);
-  return (
-    <li>
-      <Link to={`/events/${event.id}`} className="event-card">
-        <Poster event={event} />
-        <div className="event-card-body">
-          <p className="event-card-date">{formatDate(event.startsAt)}</p>
-          <h3>{event.name}</h3>
-          <p className="event-card-venue">
-            <Icon name="pin" size={15} />
-            {event.venue}
-          </p>
-          <span className={`btn btn-block ${open ? 'btn-primary' : 'btn-outline'}`}>
-            {open ? 'ซื้อบัตร' : `เปิดขาย ${formatDateTime(event.saleOpensAt)}`}
-          </span>
-        </div>
-      </Link>
-    </li>
-  );
-}
-
 export default function Events() {
   const [events, setEvents] = useState(null);
   const [error, setError] = useState(null);
@@ -88,7 +59,21 @@ export default function Events() {
     <>
       {featured && <Hero event={featured} />}
       <section className="wrap section">
-        <h2 className="section-title">อีเวนต์ทั้งหมด</h2>
+        <div className="section-head">
+          <h2 className="section-title">อีเวนต์ทั้งหมด</h2>
+          <nav className="quick-filters" aria-label="ตัวกรองด่วน">
+            <Link to="/search?sale=open" className="filter-chip">
+              เปิดขายแล้ว
+            </Link>
+            <Link to="/search?sale=upcoming" className="filter-chip">
+              เร็ว ๆ นี้
+            </Link>
+            <Link to="/search" className="filter-chip">
+              <Icon name="search" size={15} />
+              ค้นหาเพิ่มเติม
+            </Link>
+          </nav>
+        </div>
         <ErrorBanner message={error} />
         {!events && !error && <Spinner />}
         {events?.length === 0 && <p className="empty">ยังไม่มีอีเวนต์ที่กำลังจะมาถึง</p>}
