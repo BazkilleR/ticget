@@ -1,0 +1,27 @@
+meta {
+  name: Admin sales CSV
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/admin/reports/sales.csv?eventId={{eventId}}
+  body: none
+  auth: bearer
+}
+
+params:query {
+  eventId: {{eventId}}
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+tests {
+  test("200 text/csv with the header row", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-type")).to.contain("text/csv");
+    expect(String(res.getBody())).to.contain("booking_id,paid_at,event,zone,username");
+  });
+}

@@ -5,6 +5,9 @@ A ticket booking system for concerts and events that can take a large rush of si
 a worker takes seats from the zone in PostgreSQL one request at a time per zone. A booking that is not paid
 within 10 minutes expires and its seats are released.
 
+Users search events, book a zone, pay (mocked) and get one QR e-ticket per seat. Admins manage events and
+zones, check tickets in at the door and follow sales on a dashboard.
+
 - **Backend:** Node.js + Express, PostgreSQL, Redis (cache only), SQS FIFO
 - **Frontend:** React (Vite)
 - **Deploy:** AWS with CDK. The backend runs in `ap-southeast-7` (Thailand), the web UI on Amplify Hosting
@@ -74,16 +77,27 @@ Requires Node.js 24 and Docker.
 cp .env.example .env
 npm install
 docker compose up -d --wait        # Postgres :5433, Redis :6379, LocalStack (SQS) :4566
-npm run migrate && npm run seed
-
-npm run dev:api                    # terminal 1: http://localhost:3000
-npm run dev:worker                 # terminal 2
-
 cd frontend && npm install && cd ..
-npm run dev:web                    # terminal 3: http://localhost:5173
+npm run migrate && npm run seed    # 20 sample events + the admin account from ADMIN_USERNAME / ADMIN_PASSWORD
+npm run seed:demo                  # optional: a week of paid bookings for the sales dashboard
+
+npm run dev                        # Docker + migrate, then API :3000, worker and web UI :5173 in one terminal
 ```
 
-To test hold expiry quickly, start the API and the worker with `BOOKING_HOLD_MINUTES=0.25` (15 seconds).
+`npm run dev` runs `dev:api`, `dev:worker` and `dev:web` together; they can also run in separate terminals.
+To test hold expiry quickly, set `BOOKING_HOLD_MINUTES=0.25` (15 seconds) in `.env`.
+
+### Admin
+
+- The only way to get an admin account is `npm run seed` with `ADMIN_PASSWORD` set (and optionally
+  `ADMIN_USERNAME`, default `admin`). There is no API route that grants admin.
+- Log in as the admin and open **ผู้ดูแลระบบ** in the menu:
+  - **ภาพรวม:** sales dashboard and CSV export
+  - **งานแสดง:** create and edit events and zones
+  - **ตรวจบัตร:** door check-in
+- **Check-in:** each e-ticket's QR code holds a link to `/admin/check-in?code=…`. Door staff scan it with any
+  phone camera, log in once, pick the event for their gate, and confirm. A ticket gets in once, and only at
+  its own event.
 
 ## Testing
 
@@ -91,14 +105,14 @@ To test hold expiry quickly, start the API and the worker with `BOOKING_HOLD_MIN
 |---|---|---|
 | Integration tests | `npm test` | only `docker compose up -d`; tests use their own database, Redis DB and queue |
 | Load test (k6) | `npm run load:prepare` → `npm run load:run` → `npm run load:verify` | API and worker running |
-| Manual | open the `bruno/` folder in Bruno | API and worker running |
+| Manual / API | open the `bruno/` folder in Bruno, or `cd bruno && npx @usebruno/cli run --env local` | API and worker running; set `adminPassword` in the environment |
 
 ## Deploy to AWS
 
 ```bash
 npm run aws:deploy                                      # create the backend stack (~15–25 min)
 npm run aws:tunnel                                      # separate terminal: tunnel to RDS and Redis
-eval "$(npm run -s aws:env)" && npm run seed            # load the sample data
+eval "$(npm run -s aws:env)" && ADMIN_PASSWORD='<long password>' npm run seed   # sample data + admin
 AMPLIFY_APP_ID=<app id> npm run aws:amplify-rewrites    # point the web UI at the new API URL
 npm run aws:destroy                                     # delete the stack when done, to stop the costs
 ```

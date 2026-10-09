@@ -1,0 +1,29 @@
+meta {
+  name: Search events
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/events?q=concert&sale=open&sort=price&limit=10
+  body: none
+  auth: none
+}
+
+params:query {
+  q: concert
+  sale: open
+  sort: price
+  limit: 10
+}
+
+tests {
+  test("200, on-sale events only, cheapest first", function () {
+    expect(res.getStatus()).to.equal(200);
+    const events = res.getBody();
+    expect(events).to.be.an("array");
+    events.forEach((e) => expect(new Date(e.saleOpensAt) <= new Date()).to.equal(true));
+    const prices = events.map((e) => e.minPrice).filter((p) => p !== null);
+    expect(prices).to.deep.equal([...prices].sort((a, b) => a - b));
+  });
+}

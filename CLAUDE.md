@@ -421,6 +421,15 @@ ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจร
 
 ---
 
+### เฟส 10–15: ฟีเจอร์ที่เหลือตาม use case diagram (ไม่รวม tier สมาชิก, email, payment gateway จริง)
+- **เฟส 10** role admin (`users.role`, `requireAdmin` อ่านจาก DB), `GET /me`, สร้าง admin ตอน seed
+- **เฟส 11** ค้นหางานแสดง (`GET /events?q&from&to&sale&maxPrice&sort`), `GET /events/:id`, หน้า `/search`
+- **เฟส 12** admin จัดการงานแสดงและโซน (`/admin/events`, `/admin/zones`)
+- **เฟส 13** e-ticket + QR ออกตอนจ่ายเงิน, หน้าตรวจบัตร (`/admin/tickets/check-in`)
+- **เฟส 14** dashboard ยอดขาย, ยอดขายรายงาน, CSV (`unit_price` เก็บราคาตอนจอง), `npm run seed:demo`
+- **เฟส 15** Bruno ครบทุก endpoint, รัน load test ซ้ำ, เอกสาร, deploy
+- ✅ เสร็จเมื่อ: test ผ่านทั้งหมด, Bruno ผ่าน, load test ไม่ขายเกิน และไล่ flow ผู้ใช้ + admin บน AWS ได้
+
 ## Coding conventions
 
 - ใช้ `async/await` ทั้งหมด ไม่ใช้ callback

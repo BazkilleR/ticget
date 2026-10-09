@@ -1,0 +1,30 @@
+meta {
+  name: Admin update zone
+  type: http
+  seq: 16
+}
+
+patch {
+  url: {{baseUrl}}/admin/zones/{{adminZoneId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "price": 1800,
+    "capacity": 250
+  }
+}
+
+tests {
+  test("200 with the new price and capacity", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().price).to.equal(1800);
+    expect(res.getBody().capacity).to.equal(250);
+  });
+}
