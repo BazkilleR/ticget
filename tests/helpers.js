@@ -48,10 +48,10 @@ async function insertZone(eventId, name, { price = 1000, capacity = 10, reserved
 }
 
 // Inserts a user directly and signs a token for it, skipping bcrypt so tests stay fast.
-async function createUser(username) {
+async function createUser(username, { role = 'user' } = {}) {
   const { rows } = await pool.query(
-    `INSERT INTO users (username, password_hash) VALUES ($1, 'not-a-real-hash') RETURNING id`,
-    [username],
+    `INSERT INTO users (username, password_hash, role) VALUES ($1, 'not-a-real-hash', $2) RETURNING id`,
+    [username, role],
   );
   const userId = rows[0].id;
   const token = jwt.sign({}, config.jwtSecret, { algorithm: 'HS256', subject: userId, expiresIn: '1h' });

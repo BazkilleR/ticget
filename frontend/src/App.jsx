@@ -1,11 +1,12 @@
 import { Link, NavLink, Route, Routes } from 'react-router';
 import { useAuth } from './auth/AuthContext';
-import { Icon, ProtectedRoute } from './components/common';
+import { AdminRoute, Icon, ProtectedRoute } from './components/common';
 import { Login, Register } from './pages/Auth';
 import Events from './pages/Events';
 import EventZones from './pages/EventZones';
 import BookingStatus from './pages/BookingStatus';
 import MyBookings from './pages/MyBookings';
+import AdminHome from './pages/admin/AdminHome';
 
 function Logo() {
   return (
@@ -21,7 +22,7 @@ function Logo() {
 }
 
 export default function App() {
-  const { username, logout } = useAuth();
+  const { username, isAdmin, logout } = useAuth();
 
   return (
     <div className="page">
@@ -60,6 +61,7 @@ export default function App() {
               หน้าแรก
             </NavLink>
             <NavLink to="/me/bookings">บัตรของฉัน</NavLink>
+            {isAdmin && <NavLink to="/admin">ผู้ดูแลระบบ</NavLink>}
           </div>
         </nav>
       </header>
@@ -84,6 +86,14 @@ export default function App() {
               <ProtectedRoute>
                 <MyBookings />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminHome />
+              </AdminRoute>
             }
           />
           <Route

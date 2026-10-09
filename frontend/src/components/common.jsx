@@ -10,6 +10,22 @@ export function ProtectedRoute({ children }) {
   return children;
 }
 
+// Hides admin pages from normal users. This is only UX: every /admin API call is checked server-side.
+export function AdminRoute({ children }) {
+  const { token, isAdmin } = useAuth();
+  const location = useLocation();
+  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!isAdmin) {
+    return (
+      <section className="wrap empty">
+        <h1>ไม่มีสิทธิ์เข้าถึง</h1>
+        <p>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น</p>
+      </section>
+    );
+  }
+  return children;
+}
+
 export function ErrorBanner({ message }) {
   if (!message) return null;
   return (

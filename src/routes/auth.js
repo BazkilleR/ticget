@@ -39,3 +39,5 @@ router.post('/login', validate({ body: loginSchema }), asyncHandler(async (req, 
 }));
 
 module.exports = router;
+// scripts/seed.js validates the admin account against the same rules as a normal sign-up.
+module.exports.registerSchema = registerSchema;

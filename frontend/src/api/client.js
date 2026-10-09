@@ -40,6 +40,7 @@ const MESSAGES = {
   invalid_credentials: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
   username_taken: 'ชื่อผู้ใช้นี้ถูกใช้แล้ว',
   unauthorized: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+  forbidden: 'คุณไม่มีสิทธิ์ใช้งานส่วนนี้',
   event_not_found: 'ไม่พบอีเวนต์นี้',
   zone_not_found: 'ไม่พบโซนนี้ในอีเวนต์',
   sale_not_open: 'ยังไม่เปิดขาย',

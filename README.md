@@ -111,6 +111,7 @@ npm run aws:destroy                                     # delete the stack when 
 
 | Script | What it does |
 |---|---|
+| `dev` | start Docker, migrate, then run API + worker + web UI together (Ctrl+C stops all) |
 | `dev:api` / `dev:worker` / `dev:web` | run the API, worker or web UI with auto-reload |
 | `migrate` / `seed` | update the schema, load sample data (**seed wipes every table first**) |
 | `expire` | run the expired-hold cleanup once |

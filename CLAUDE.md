@@ -113,6 +113,7 @@ CREATE TABLE users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username      TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),  -- 002_user_roles.sql
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -175,7 +176,13 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 |---|---|---|
 | POST | `/bookings` | `{ eventId, zoneId, quantity, requestId }` → `202 { bookingId, status: "QUEUED" }` |
 | GET | `/bookings/:id` | สถานะการจอง ถ้ายังไม่มีใน DB ตอบ `{ status: "QUEUED" }` |
+| GET | `/me` | `{ id, username, role }` ของตัวเอง (frontend ใช้ตัดสินว่าจะแสดงเมนู admin) |
 | GET | `/me/bookings` | ประวัติการจองของตัวเอง |
+
+### Admin: ต้องมี token และ `users.role = 'admin'`
+
+ทุก route ใต้ `/admin` ใช้ `requireAuth` + `requireAdmin` (`src/middleware/admin.js`) ซึ่งอ่าน role จาก DB ทุกครั้ง ไม่ใส่ role ใน JWT เพื่อให้ถอดสิทธิ์มีผลทันที ไม่มีสิทธิ์ตอบ `403 forbidden`
+บัญชี admin สร้างได้ทางเดียวคือ `npm run seed` ด้วย env `ADMIN_USERNAME` / `ADMIN_PASSWORD` ไม่มี HTTP route ที่ให้สิทธิ์ admin
 | POST | `/bookings/:id/pay` | **mock** ชำระเงิน → `CONFIRMED` (ถ้ายังไม่หมดเวลา) |
 
 ---
@@ -297,6 +304,8 @@ SQS_BOOKING_QUEUE_URL=http://localhost:4566/000000000000/booking-queue.fifo
 JWT_SECRET=change-me-to-a-long-random-string
 BOOKING_HOLD_MINUTES=10
 MAX_TICKETS_PER_USER=4
+ADMIN_USERNAME=admin                       # ใช้โดย npm run seed เท่านั้น
+ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจริง บน AWS ส่งผ่าน shell ตอน seed
 ```
 
 ---
