@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the app image and saves it as infra/.build/image.tar.gz. CDK uploads that file as an S3 asset and
+# Builds the app image and saves it as infra/.build/image.tar.gz. Terraform uploads that file to S3 and
 # the EC2 instances `docker load` it: no ECR, so no ECR VPC endpoints to pay for.
 set -euo pipefail
 cd "$(dirname "$0")/../.."

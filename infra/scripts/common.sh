@@ -1,13 +1,15 @@
-# Shared helpers for infra/scripts/*.sh. Region defaults to Asia Pacific (Thailand).
-REGION="${REGION:-ap-southeast-7}"
-STACK="${STACK:-TicketBackend}"
+# Shared helpers for infra/scripts/*.sh.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TF=(terraform -chdir="$REPO_ROOT/infra")
 
-# Reads one CloudFormation output of the stack, e.g. `output ApiUrl`.
+# Reads one Terraform output of the stack, e.g. `output ApiUrl`. Empty if it does not exist (not deployed).
 output() {
-  aws cloudformation describe-stacks --region "$REGION" --stack-name "$STACK" \
-    --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+  "${TF[@]}" output -raw "$1" 2>/dev/null || true
 }
+
+# Region the stack was deployed to. Defaults to Asia Pacific (Thailand).
+REGION="${REGION:-$(output Region)}"
+REGION="${REGION:-ap-southeast-7}"
 
 # First InService instance of the API auto scaling group.
 api_instance() {

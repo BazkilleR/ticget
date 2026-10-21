@@ -1,0 +1,23 @@
+#!/bin/bash
+# EC2 boot: install Docker, load the app image from S3, resolve secrets, (migrate,) start the container.
+# Containers use the host network so the AWS SDK can reach instance metadata (IMDSv2, hop limit 1).
+set -euxo pipefail
+exec > >(tee -a /var/log/app-boot.log) 2>&1
+dnf install -y docker
+systemctl enable --now docker
+aws s3 cp "${image_url}" /tmp/image.tar.gz --region ${region} --only-show-errors
+docker load -i /tmp/image.tar.gz && rm -f /tmp/image.tar.gz
+install -d -m 700 /etc/ticket
+cat > /etc/ticket/base.env <<'ENV'
+%{ for key, value in env ~}
+${key}=${value}
+%{ endfor ~}
+ENV
+docker run --rm --network host --env-file /etc/ticket/base.env ${image_tag} node scripts/aws-env.js > /etc/ticket/secrets.env
+chmod 600 /etc/ticket/*.env
+%{ if run_migrations ~}
+docker run --rm --network host --env-file /etc/ticket/base.env --env-file /etc/ticket/secrets.env ${image_tag} node scripts/migrate.js
+%{ endif ~}
+TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+docker run -d --name app --restart unless-stopped --network host --stop-timeout 25 --env-file /etc/ticket/base.env --env-file /etc/ticket/secrets.env --log-driver awslogs --log-opt awslogs-region=${region} --log-opt awslogs-group=${log_group} --log-opt awslogs-stream=$INSTANCE_ID ${image_tag} ${command}

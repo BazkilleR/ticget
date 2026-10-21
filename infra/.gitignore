@@ -1,4 +1,6 @@
-node_modules/
-cdk.out/
-cdk.context.json
 .build/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
