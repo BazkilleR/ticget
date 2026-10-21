@@ -34,9 +34,15 @@ REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$
 if describe >/dev/null 2>&1; then
   echo "$REPO:$TAG is already in ECR, nothing to push"
 else
-  aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+  # Log in with a throwaway Docker config: Docker Desktop's credsStore (desktop.exe on WSL) rejects the ECR
+  # token, which is too long for the Windows Credential Manager ("The stub received bad data").
+  PUSH_CONFIG="$(mktemp -d)"
+  trap 'rm -rf "$PUSH_CONFIG"' EXIT
+  echo '{}' > "$PUSH_CONFIG/config.json"
+  aws ecr get-login-password --region "$REGION" \
+    | docker --config "$PUSH_CONFIG" login --username AWS --password-stdin "$REGISTRY"
   docker tag "$LOCAL_TAG" "$REGISTRY/$REPO:$TAG"
-  docker push "$REGISTRY/$REPO:$TAG"
+  docker --config "$PUSH_CONFIG" push "$REGISTRY/$REPO:$TAG"
 fi
 
 IMAGE_URI="$REGISTRY/$REPO@$(describe)"
