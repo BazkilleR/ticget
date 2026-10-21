@@ -111,13 +111,15 @@ To test hold expiry quickly, set `BOOKING_HOLD_MINUTES=0.25` (15 seconds) in `.e
 
 ```bash
 npm run aws:init                                        # once: download the Terraform providers
-npm run aws:deploy                                      # build image + Lambda, terraform apply (~15–25 min)
+npm run aws:deploy                                      # push image to ECR, bundle Lambda, terraform apply (~15–25 min)
 npm run aws:tunnel                                      # separate terminal: tunnel to RDS and Redis
 eval "$(npm run -s aws:env)" && ADMIN_PASSWORD='<long password>' npm run seed   # sample data + admin
 AMPLIFY_APP_ID=<app id> npm run aws:amplify-rewrites    # point the web UI at the new API URL
 npm run aws:destroy                                     # delete the stack when done, to stop the costs
 ```
 
+- The app image goes to the ECR repository `ticket-backend`, created on the first deploy and kept by
+  `aws:destroy`, so later deploys only push the layers that changed. EC2 pulls it through VPC endpoints (no NAT).
 - Needs Terraform ≥ 1.9 and Docker. State is kept locally in `infra/terraform.tfstate` (gitignored, holds the
   generated secrets): deploy and destroy from the same machine.
 - Create the Amplify app once in the console (Singapore region). Steps are in [frontend/README.md](frontend/README.md).

@@ -4,6 +4,10 @@ output "Region" {
   value = var.region
 }
 
+output "ImageUri" {
+  value = var.image_uri
+}
+
 output "ApiUrl" {
   value = aws_apigatewayv2_stage.default.invoke_url
 }

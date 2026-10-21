@@ -1,6 +1,6 @@
 # No NAT gateway: subnets are isolated. Instances reach AWS services through VPC endpoints: S3 (gateway,
-# free: Amazon Linux packages + the app image), SQS, Secrets Manager and CloudWatch Logs (interface, in one
-# AZ to halve their hourly cost).
+# free: Amazon Linux packages + the ECR image layers), SQS, Secrets Manager, CloudWatch Logs and ECR
+# (interface, in one AZ to halve their hourly cost).
 
 data "aws_availability_zones" "available" {
   state = "available"
@@ -40,7 +40,7 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 resource "aws_vpc_endpoint" "interface" {
-  for_each            = toset(["sqs", "secretsmanager", "logs"])
+  for_each            = toset(["sqs", "secretsmanager", "logs", "ecr.api", "ecr.dkr"])
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.region}.${each.key}"
   vpc_endpoint_type   = "Interface"

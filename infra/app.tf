@@ -60,9 +60,14 @@ data "aws_iam_policy_document" "app" {
   for_each = local.tiers
 
   statement {
-    sid       = "AppImage"
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.assets.arn}/*"]
+    sid       = "EcrLogin"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"] # this action has no resource-level permissions
+  }
+  statement {
+    sid       = "EcrPull"
+    actions   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"]
+    resources = [local.ecr_repository_arn]
   }
   statement {
     sid       = "Secrets"
@@ -122,9 +127,9 @@ resource "aws_launch_template" "app" {
   }
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh.tftpl", {
-    image_url      = "s3://${aws_s3_object.image.bucket}/${aws_s3_object.image.key}"
+    image          = var.image_uri
+    registry       = split("/", var.image_uri)[0]
     region         = var.region
-    image_tag      = local.image_tag
     env            = merge(local.base_env, { DB_CA_FILE = "/app/certs/rds-global-bundle.pem" })
     log_group      = aws_cloudwatch_log_group.app[each.key].name
     command        = each.value.command
@@ -137,6 +142,13 @@ resource "aws_launch_template" "app" {
     content {
       resource_type = tag_specifications.value
       tags          = { Name = "${local.name}-${each.key}", project = local.name }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = can(regex("^[0-9]+\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com/.+@sha256:[0-9a-f]{64}$", var.image_uri))
+      error_message = "image_uri is not set to an ECR image digest. Run \"npm run aws:build-image\" first (it writes infra/image.auto.tfvars)."
     }
   }
 }

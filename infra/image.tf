@@ -1,36 +1,15 @@
-# The app image built by `npm run aws:build-image` goes to S3 and the EC2 instances `docker load` it:
-# no ECR, so no ECR VPC endpoints to pay for. The key carries the file hash, so a new image changes the user
-# data, which makes a new launch template version and an instance refresh.
+# The app image lives in ECR (repository ticket-backend, created and pushed by `npm run aws:build-image`,
+# outside this stack so it survives `aws:destroy`). The instances pull it through the ecr.api / ecr.dkr
+# interface endpoints, and the layers come from S3 through the gateway endpoint: no NAT needed.
+
+variable "image_uri" {
+  description = "App image by digest, e.g. <account>.dkr.ecr.<region>.amazonaws.com/ticket-backend@sha256:... Written to image.auto.tfvars by build-image.sh."
+  type        = string
+  default     = "" # empty is fine for `terraform destroy`; the launch template precondition guards apply
+}
+
+data "aws_caller_identity" "current" {}
 
 locals {
-  image_tarball = "${path.module}/.build/image.tar.gz"
-  # fileexists keeps `terraform destroy` working without a local build; the precondition below guards apply.
-  image_hash = fileexists(local.image_tarball) ? filemd5(local.image_tarball) : "missing"
-}
-
-resource "aws_s3_bucket" "assets" {
-  bucket_prefix = "${local.name}-assets-"
-  force_destroy = true
-}
-
-resource "aws_s3_bucket_public_access_block" "assets" {
-  bucket                  = aws_s3_bucket.assets.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-resource "aws_s3_object" "image" {
-  bucket      = aws_s3_bucket.assets.id
-  key         = "image-${local.image_hash}.tar.gz"
-  source      = local.image_tarball
-  source_hash = local.image_hash # not etag: a multipart upload's ETag is not the MD5
-
-  lifecycle {
-    precondition {
-      condition     = fileexists(local.image_tarball)
-      error_message = "App image not found at infra/.build/image.tar.gz. Run \"npm run aws:build-image\" first."
-    }
-  }
+  ecr_repository_arn = "arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:repository/${local.name}"
 }

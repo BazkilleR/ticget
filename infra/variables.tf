@@ -11,8 +11,7 @@ variable "region" {
 #   API/worker/Lambda -> RDS PostgreSQL, ElastiCache Redis
 #   EventBridge Scheduler (15 min) -> Lambda (expire.js)
 locals {
-  name      = "ticket-backend"
-  app_port  = 3000
-  db_name   = "tickets"
-  image_tag = "ticket-backend:aws"
+  name     = "ticket-backend"
+  app_port = 3000
+  db_name  = "tickets"
 }
