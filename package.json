@@ -25,11 +25,12 @@
     "aws:build-lambda": "bash infra/scripts/build-lambda.sh",
     "aws:init": "terraform -chdir=infra init",
     "aws:plan": "npm run aws:build-image && npm run aws:build-lambda && terraform -chdir=infra plan",
-    "aws:deploy": "npm run aws:build-image && npm run aws:build-lambda && terraform -chdir=infra apply && npm run aws:amplify-rewrites -- --if-found",
+    "aws:deploy": "npm run aws:build-image && npm run aws:build-lambda && terraform -chdir=infra apply && npm run aws:amplify-rewrites -- --if-found && npm run aws:seed -- --if-empty",
     "aws:destroy": "bash infra/scripts/destroy.sh",
     "aws:tunnel": "bash infra/scripts/tunnel.sh",
     "aws:ssh": "bash infra/scripts/tunnel.sh shell",
     "aws:env": "bash infra/scripts/aws-env.sh",
+    "aws:seed": "bash infra/scripts/seed.sh",
     "aws:amplify-rewrites": "bash infra/scripts/amplify-rewrites.sh",
     "dev:web": "npm --prefix frontend run dev"
   },

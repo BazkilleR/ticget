@@ -89,8 +89,8 @@ To test hold expiry quickly, set `BOOKING_HOLD_MINUTES=0.25` (15 seconds) in `.e
 
 ### Admin
 
-- The only way to get an admin account is `npm run seed` with `ADMIN_PASSWORD` set (and optionally
-  `ADMIN_USERNAME`, default `admin`). There is no API route that grants admin.
+- The only way to get an admin account is `npm run seed` (on AWS: `aws:seed`) with `ADMIN_PASSWORD` set
+  (and optionally `ADMIN_USERNAME`, default `admin`). There is no API route that grants admin.
 - Log in as the admin and open **ผู้ดูแลระบบ** in the menu:
   - **ภาพรวม:** sales dashboard and CSV export
   - **งานแสดง:** create and edit events and zones
@@ -111,12 +111,16 @@ To test hold expiry quickly, set `BOOKING_HOLD_MINUTES=0.25` (15 seconds) in `.e
 
 ```bash
 npm run aws:init                                        # once: download the Terraform providers
-npm run aws:deploy                                      # push image to ECR, bundle Lambda, terraform apply, Amplify rewrites (~15–25 min)
-npm run aws:tunnel                                      # separate terminal: tunnel to RDS and Redis
-eval "$(npm run -s aws:env)" && ADMIN_PASSWORD='<long password>' npm run seed   # sample data + admin
+ADMIN_PASSWORD='<long password>' npm run aws:deploy     # push image to ECR, bundle Lambda, terraform apply,
+                                                        # Amplify rewrites, seed sample data + admin (~15–25 min)
 npm run aws:destroy                                     # delete the stack when done, to stop the costs
 ```
 
+- The seed runs on an API instance over EC2 Instance Connect, so no tunnel is needed. It only happens when
+  `ADMIN_PASSWORD` is set and the database has no users yet, so redeploying a running stack keeps its data.
+  Add `SEED_DEMO=1` for a week of paid bookings on the sales dashboard.
+- To seed by hand: `ADMIN_PASSWORD=... npm run aws:seed` (`-- --demo` adds demo sales, `-- --force` wipes a
+  database that has data, `-- --demo-only` just adds demo sales).
 - The app image goes to the ECR repository `ticket-backend`, created on the first deploy and kept by
   `aws:destroy`, so later deploys only push the layers that changed. EC2 pulls it through VPC endpoints (no NAT).
 - Needs Terraform ≥ 1.9 and Docker. State is kept locally in `infra/terraform.tfstate` (gitignored, holds the
@@ -138,5 +142,6 @@ npm run aws:destroy                                     # delete the stack when 
 | `test` | integration tests |
 | `load:prepare` / `load:run` / `load:verify` | load test |
 | `aws:deploy` / `aws:destroy` | create or delete the AWS stack (`aws:plan` previews the changes) |
+| `aws:seed` | load sample data + admin into the AWS database (`aws:deploy` already runs it on an empty database) |
 | `aws:tunnel` / `aws:ssh` / `aws:env` | reach the AWS database, Redis and EC2 from your machine |
 | `aws:amplify-rewrites` | set Amplify's `/api/*` proxy to the current API URL (`aws:deploy` already runs it) |

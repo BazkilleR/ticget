@@ -24,4 +24,4 @@ echo "export SQS_BOOKING_QUEUE_URL='$(output QueueUrl)'"
 # Do not export AWS_ENDPOINT_URL: the AWS CLI and SDKs apply it to every service. .env's LocalStack value
 # still gets loaded inside node, but the scripts run through the tunnel never call SQS.
 echo "export API_URL='$(output ApiUrl)'"
-echo "echo 'Environment now points at AWS ($STACK in $REGION). Open a new terminal to go back to local.'"
+echo "echo 'Environment now points at AWS ($REGION). Open a new terminal to go back to local.'"

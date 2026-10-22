@@ -200,7 +200,7 @@ CREATE INDEX bookings_user_idx ON bookings (user_id, event_id);
 ### Admin: ต้องมี token และ `users.role = 'admin'`
 
 ทุก route ใต้ `/admin` ใช้ `requireAuth` + `requireAdmin` (`src/middleware/admin.js`) ซึ่งอ่าน role จาก DB ทุกครั้ง ไม่ใส่ role ใน JWT เพื่อให้ถอดสิทธิ์มีผลทันที ไม่มีสิทธิ์ตอบ `403 forbidden`
-บัญชี admin สร้างได้ทางเดียวคือ `npm run seed` ด้วย env `ADMIN_USERNAME` / `ADMIN_PASSWORD` ไม่มี HTTP route ที่ให้สิทธิ์ admin
+บัญชี admin สร้างได้ทางเดียวคือ `npm run seed` (บน AWS คือ `npm run aws:seed` ซึ่งรัน seed เดียวกันบน API instance) ด้วย env `ADMIN_USERNAME` / `ADMIN_PASSWORD` ไม่มี HTTP route ที่ให้สิทธิ์ admin
 
 | Method | Path | คำอธิบาย |
 |---|---|---|
@@ -354,7 +354,7 @@ JWT_SECRET=change-me-to-a-long-random-string
 BOOKING_HOLD_MINUTES=10
 MAX_TICKETS_PER_USER=4
 ADMIN_USERNAME=admin                       # ใช้โดย npm run seed เท่านั้น
-ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจริง บน AWS ส่งผ่าน shell ตอน seed
+ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจริง บน AWS ส่งผ่าน shell ตอน aws:deploy / aws:seed
 ```
 
 ---
@@ -409,6 +409,7 @@ ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจร
 ### เฟส 8: Deploy ขึ้น AWS
 - Dockerfile เดียว ใช้รันได้ทั้ง `node src/api.js` และ `node src/worker.js`
 - IaC ด้วย Terraform (`infra/*.tf`, state อยู่ในเครื่องที่ `infra/terraform.tfstate` ห้าม commit เพราะมี secret): VPC 2 AZ, RDS PostgreSQL, ElastiCache Redis, SQS FIFO + DLQ, ALB (internal) + EC2 ASG สำหรับ API, EC2 ASG สำหรับ worker (scale ตามจำนวน message ในคิว), API Gateway + VPC Link, Lambda + EventBridge Scheduler สำหรับ cleanup, Secrets Manager, VPC Endpoints สำหรับ SQS, Secrets Manager, CloudWatch Logs, ECR (interface) และ S3 (gateway)
+- `ADMIN_PASSWORD=... npm run aws:deploy` seed ข้อมูลตัวอย่าง + admin ให้เองผ่าน EC2 Instance Connect (ไม่ต้อง tunnel) เฉพาะตอน DB ยังไม่มี users จึง deploy ซ้ำได้โดยข้อมูลไม่หาย
 - image ของแอปอยู่ใน ECR repository `ticket-backend` ที่ `npm run aws:build-image` สร้างนอก Terraform (ไม่ถูกลบตอน `aws:destroy`) และเขียน digest ลง `infra/image.auto.tfvars`
 - ตั้ง AWS Budget alert ก่อน deploy
 - ✅ เสร็จเมื่อ: รัน integration test และ load test กับ URL บน AWS แล้วผ่าน
