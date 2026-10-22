@@ -353,7 +353,7 @@ SQS_BOOKING_QUEUE_URL=http://localhost:4566/000000000000/booking-queue.fifo
 JWT_SECRET=change-me-to-a-long-random-string
 BOOKING_HOLD_MINUTES=10
 MAX_TICKETS_PER_USER=4
-ADMIN_USERNAME=admin                       # ใช้โดย npm run seed เท่านั้น
+ADMIN_USERNAME=admin                       # ใช้โดย npm run seed / aws:seed เท่านั้น
 ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจริง บน AWS ส่งผ่าน shell ตอน aws:deploy / aws:seed
 ```
 
