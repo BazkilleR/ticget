@@ -1,6 +1,0 @@
-{
-  "app": "node bin/app.js",
-  "context": {
-    "region": "ap-southeast-7"
-  }
-}

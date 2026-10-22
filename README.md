@@ -10,17 +10,17 @@ zones, check tickets in at the door and follow sales on a dashboard.
 
 - **Backend:** Node.js + Express, PostgreSQL, Redis (cache only), SQS FIFO
 - **Frontend:** React (Vite)
-- **Deploy:** AWS with CDK. The backend runs in `ap-southeast-7` (Thailand), the web UI on Amplify Hosting
+- **Deploy:** AWS with Terraform. The backend runs in `ap-southeast-7` (Thailand), the web UI on Amplify Hosting
 
 ## Repository layout
 
-The repo has three parts, each with its own `package.json`:
+The repo has three parts:
 
 | Part | Where | What |
 |---|---|---|
 | **Backend** | repo root | API and worker share one codebase but run as two separate processes |
 | **Frontend** | [`frontend/`](frontend/) | Single-page web UI that calls the backend through `/api/*` |
-| **Infra** | [`infra/`](infra/) | AWS CDK app that builds the whole backend stack |
+| **Infra** | [`infra/`](infra/) | Terraform configuration that builds the whole backend stack |
 
 Backend files at the root:
 
@@ -110,13 +110,18 @@ To test hold expiry quickly, set `BOOKING_HOLD_MINUTES=0.25` (15 seconds) in `.e
 ## Deploy to AWS
 
 ```bash
-npm run aws:deploy                                      # create the backend stack (~15–25 min)
+npm run aws:init                                        # once: download the Terraform providers
+npm run aws:deploy                                      # push image to ECR, bundle Lambda, terraform apply (~15–25 min)
 npm run aws:tunnel                                      # separate terminal: tunnel to RDS and Redis
 eval "$(npm run -s aws:env)" && ADMIN_PASSWORD='<long password>' npm run seed   # sample data + admin
 AMPLIFY_APP_ID=<app id> npm run aws:amplify-rewrites    # point the web UI at the new API URL
 npm run aws:destroy                                     # delete the stack when done, to stop the costs
 ```
 
+- The app image goes to the ECR repository `ticket-backend`, created on the first deploy and kept by
+  `aws:destroy`, so later deploys only push the layers that changed. EC2 pulls it through VPC endpoints (no NAT).
+- Needs Terraform ≥ 1.9 and Docker. State is kept locally in `infra/terraform.tfstate` (gitignored, holds the
+  generated secrets): deploy and destroy from the same machine.
 - Create the Amplify app once in the console (Singapore region). Steps are in [frontend/README.md](frontend/README.md).
 - Every fresh stack gets a new API URL, so run `aws:amplify-rewrites` again after each deploy.
 - `npm run aws:ssh` opens a shell on an API instance for logs.
@@ -132,6 +137,6 @@ npm run aws:destroy                                     # delete the stack when 
 | `expire` | run the expired-hold cleanup once |
 | `test` | integration tests |
 | `load:prepare` / `load:run` / `load:verify` | load test |
-| `aws:deploy` / `aws:destroy` | create or delete the AWS stack |
+| `aws:deploy` / `aws:destroy` | create or delete the AWS stack (`aws:plan` previews the changes) |
 | `aws:tunnel` / `aws:ssh` / `aws:env` | reach the AWS database, Redis and EC2 from your machine |
 | `aws:amplify-rewrites` | set Amplify's `/api/*` proxy to the current API URL |

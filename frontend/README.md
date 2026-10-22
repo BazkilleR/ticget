@@ -6,7 +6,7 @@ so the backend needs no CORS:
 | Where | Who forwards `/api/*` |
 |---|---|
 | local (`npm run dev`) | Vite dev proxy → `http://localhost:3000` (prefix stripped) |
-| AWS Amplify Hosting | Amplify rewrite rule (200) → API Gateway `ApiUrl` of the `TicketBackend` stack |
+| AWS Amplify Hosting | Amplify rewrite rule (200) → API Gateway URL (Terraform output `ApiUrl`) |
 
 ## Run locally
 
@@ -52,6 +52,6 @@ This sets two rewrite rules, in this order:
 - After logging in, **My bookings** loads, which means the `Authorization` header reaches the API through the proxy
 - Reloading a deep link such as `/bookings/<id>` does not return a 404
 
-If the proxy ever drops the `Authorization` header, the fallback is to enable `corsPreflight` on the
-`HttpApi` in `infra/lib/ticket-stack.js` for the Amplify domain and build with
+If the proxy ever drops the `Authorization` header, the fallback is to add a `cors_configuration` for the
+Amplify domain to `aws_apigatewayv2_api.http` in `infra/api.tf` and build with
 `VITE_API_BASE=https://<api-id>.execute-api.<region>.amazonaws.com`.
