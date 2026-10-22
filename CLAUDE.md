@@ -415,7 +415,7 @@ ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจร
 
 ### เฟส 9: Frontend (Vite + React) บน Amplify Hosting
 - `frontend/` เป็น SPA: login/register, รายการ event, เลือกโซน + จำนวน, หน้าสถานะการจอง (poll จนพ้น `QUEUED`, นับถอยหลัง, ปุ่มจ่าย mock), การจองของฉัน
-- เรียก API แบบ same-origin ที่ `/api/*` เสมอ backend ไม่ต้องเปิด CORS: local ใช้ Vite proxy ส่วนบน Amplify ใช้ rewrite 200 ไปที่ `ApiUrl` (`npm run aws:amplify-rewrites` ต้องรันใหม่ทุกครั้งที่ deploy stack ใหม่)
+- เรียก API แบบ same-origin ที่ `/api/*` เสมอ backend ไม่ต้องเปิด CORS: local ใช้ Vite proxy ส่วนบน Amplify ใช้ rewrite 200 ไปที่ `ApiUrl` (Amplify app สร้างครั้งเดียวใน console อยู่นอก Terraform แบบเดียวกับ ECR ส่วน rewrite ตั้งอัตโนมัติท้าย `npm run aws:deploy` ด้วย `aws:amplify-rewrites` ซึ่งหา app จาก GitHub remote ของ repo)
 - `requestId` สร้างครั้งเดียวต่อการจอง 1 ครั้ง ถ้า retry ด้วยโซน/จำนวนเดิมให้ใช้ค่าเดิม (idempotency)
 - token เก็บใน `sessionStorage` และไม่ส่ง `userId` ไปกับ request
 - ✅ เสร็จเมื่อ: `npm --prefix frontend run build` ผ่าน ไล่ flow ครบบน local (PENDING → CONFIRMED, SOLD_OUT, USER_LIMIT, หมดเวลาแล้วจ่ายได้ 409) และบน Amplify `/api/health` กับ deep link ใช้งานได้

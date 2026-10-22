@@ -35,13 +35,17 @@ One-time setup in the Amplify console:
    Singapore is the closest region that has it. Visitors get the UI from CloudFront edges either way, and
    the `/api` proxy works across regions.
 
-After the backend is deployed (and again after every fresh deploy, since the API Gateway URL changes):
+The app stays outside Terraform, so `npm run aws:destroy` keeps it and its `amplifyapp.com` domain. Only the
+rewrite rules follow the stack: every `npm run aws:deploy` ends with `aws:amplify-rewrites`, which finds the
+Amplify app connected to this repo's GitHub remote and points it at the new API Gateway URL. To run it alone
+or pick another app:
 
 ```bash
-AMPLIFY_APP_ID=<app id> npm run aws:amplify-rewrites   # app in another region: add AMPLIFY_REGION=...
+npm run aws:amplify-rewrites
+AMPLIFY_APP_ID=<app id> AMPLIFY_REGION=<region> npm run aws:amplify-rewrites
 ```
 
-This sets two rewrite rules, in this order:
+It sets two rewrite rules, in this order:
 
 1. `/api/<*>` → `https://<api-id>.execute-api.<region>.amazonaws.com/<*>` (200, proxy)
 2. SPA fallback: anything without a static file extension → `/index.html` (200)
