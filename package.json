@@ -25,7 +25,7 @@
     "aws:build-lambda": "bash infra/scripts/build-lambda.sh",
     "aws:init": "terraform -chdir=infra init",
     "aws:plan": "npm run aws:build-image && npm run aws:build-lambda && terraform -chdir=infra plan",
-    "aws:deploy": "npm run aws:build-image && npm run aws:build-lambda && terraform -chdir=infra apply",
+    "aws:deploy": "npm run aws:build-image && npm run aws:build-lambda && terraform -chdir=infra apply && npm run aws:amplify-rewrites -- --if-found",
     "aws:destroy": "bash infra/scripts/destroy.sh",
     "aws:tunnel": "bash infra/scripts/tunnel.sh",
     "aws:ssh": "bash infra/scripts/tunnel.sh shell",

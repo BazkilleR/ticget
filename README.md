@@ -111,10 +111,9 @@ To test hold expiry quickly, set `BOOKING_HOLD_MINUTES=0.25` (15 seconds) in `.e
 
 ```bash
 npm run aws:init                                        # once: download the Terraform providers
-npm run aws:deploy                                      # push image to ECR, bundle Lambda, terraform apply (~15–25 min)
+npm run aws:deploy                                      # push image to ECR, bundle Lambda, terraform apply, Amplify rewrites (~15–25 min)
 npm run aws:tunnel                                      # separate terminal: tunnel to RDS and Redis
 eval "$(npm run -s aws:env)" && ADMIN_PASSWORD='<long password>' npm run seed   # sample data + admin
-AMPLIFY_APP_ID=<app id> npm run aws:amplify-rewrites    # point the web UI at the new API URL
 npm run aws:destroy                                     # delete the stack when done, to stop the costs
 ```
 
@@ -123,7 +122,8 @@ npm run aws:destroy                                     # delete the stack when 
 - Needs Terraform ≥ 1.9 and Docker. State is kept locally in `infra/terraform.tfstate` (gitignored, holds the
   generated secrets): deploy and destroy from the same machine.
 - Create the Amplify app once in the console (Singapore region). Steps are in [frontend/README.md](frontend/README.md).
-- Every fresh stack gets a new API URL, so run `aws:amplify-rewrites` again after each deploy.
+- Every fresh stack gets a new API URL. `aws:deploy` points the Amplify app connected to this repo's GitHub
+  remote at it (skipped if there is none); set `AMPLIFY_APP_ID` / `AMPLIFY_REGION` to pick another app.
 - `npm run aws:ssh` opens a shell on an API instance for logs.
 
 ## Common npm scripts
@@ -139,4 +139,4 @@ npm run aws:destroy                                     # delete the stack when 
 | `load:prepare` / `load:run` / `load:verify` | load test |
 | `aws:deploy` / `aws:destroy` | create or delete the AWS stack (`aws:plan` previews the changes) |
 | `aws:tunnel` / `aws:ssh` / `aws:env` | reach the AWS database, Redis and EC2 from your machine |
-| `aws:amplify-rewrites` | set Amplify's `/api/*` proxy to the current API URL |
+| `aws:amplify-rewrites` | set Amplify's `/api/*` proxy to the current API URL (`aws:deploy` already runs it) |
