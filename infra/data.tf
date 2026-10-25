@@ -29,7 +29,7 @@ resource "aws_db_instance" "db" {
 
 resource "aws_elasticache_subnet_group" "cache" {
   name        = local.name
-  description = "Ticket backend cache subnets"
+  description = "Ticget backend cache subnets"
   subnet_ids  = aws_subnet.private[*].id
 }
 

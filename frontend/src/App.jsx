@@ -17,12 +17,12 @@ import AdminCheckIn from './pages/admin/AdminCheckIn';
 
 function Logo() {
   return (
-    <Link to="/" className="brand" aria-label="Ticket Booking หน้าแรก">
+    <Link to="/" className="brand" aria-label="Ticget หน้าแรก">
       <span className="brand-mark">
         <Icon name="ticket" size={20} />
       </span>
       <span className="brand-text">
-        TICKET<b>BOOKING</b>
+        TIC<b>GET</b>
       </span>
     </Link>
   );
