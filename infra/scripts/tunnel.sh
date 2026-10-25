@@ -12,18 +12,7 @@ if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
   exit 1
 fi
 
-# One-off key pair; EC2 Instance Connect accepts the public key for 60 seconds.
-KEY_DIR="$(mktemp -d)"
-trap 'rm -rf "$KEY_DIR"' EXIT
-ssh-keygen -q -t ed25519 -N '' -f "$KEY_DIR/key"
-aws ec2-instance-connect send-ssh-public-key --region "$REGION" --instance-id "$INSTANCE_ID" \
-  --instance-os-user ec2-user --ssh-public-key "file://$KEY_DIR/key.pub" >/dev/null
-
-SSH_OPTS=(
-  -i "$KEY_DIR/key"
-  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ServerAliveInterval=30
-  -o "ProxyCommand=aws ec2-instance-connect open-tunnel --region $REGION --instance-id %h"
-)
+eic_ssh "$INSTANCE_ID"
 
 if [ "${1:-}" = "shell" ]; then
   exec ssh "${SSH_OPTS[@]}" "ec2-user@$INSTANCE_ID"
