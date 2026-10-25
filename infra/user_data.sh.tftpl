@@ -7,17 +7,17 @@ dnf install -y docker
 systemctl enable --now docker
 aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}
 docker pull --quiet ${image}
-install -d -m 700 /etc/ticket
-cat > /etc/ticket/base.env <<'ENV'
+install -d -m 700 /etc/ticget
+cat > /etc/ticget/base.env <<'ENV'
 %{ for key, value in env ~}
 ${key}=${value}
 %{ endfor ~}
 ENV
-docker run --rm --network host --env-file /etc/ticket/base.env ${image} node scripts/aws-env.js > /etc/ticket/secrets.env
-chmod 600 /etc/ticket/*.env
+docker run --rm --network host --env-file /etc/ticget/base.env ${image} node scripts/aws-env.js > /etc/ticget/secrets.env
+chmod 600 /etc/ticget/*.env
 %{ if run_migrations ~}
-docker run --rm --network host --env-file /etc/ticket/base.env --env-file /etc/ticket/secrets.env ${image} node scripts/migrate.js
+docker run --rm --network host --env-file /etc/ticget/base.env --env-file /etc/ticget/secrets.env ${image} node scripts/migrate.js
 %{ endif ~}
 TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
 INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
-docker run -d --name app --restart unless-stopped --network host --stop-timeout 25 --env-file /etc/ticket/base.env --env-file /etc/ticket/secrets.env --log-driver awslogs --log-opt awslogs-region=${region} --log-opt awslogs-group=${log_group} --log-opt awslogs-stream=$INSTANCE_ID ${image} ${command}
+docker run -d --name app --restart unless-stopped --network host --stop-timeout 25 --env-file /etc/ticget/base.env --env-file /etc/ticget/secrets.env --log-driver awslogs --log-opt awslogs-region=${region} --log-opt awslogs-group=${log_group} --log-opt awslogs-stream=$INSTANCE_ID ${image} ${command}

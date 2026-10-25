@@ -147,8 +147,10 @@ resource "aws_launch_template" "app" {
 
   lifecycle {
     precondition {
-      condition     = can(regex("^[0-9]+\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com/.+@sha256:[0-9a-f]{64}$", var.image_uri))
-      error_message = "image_uri is not set to an ECR image digest. Run \"npm run aws:build-image\" first (it writes infra/image.auto.tfvars)."
+      # The instance role may only pull from this stack's repository and region, so a leftover image_uri
+      # (another repository name or region) would pass a looser check and then fail at boot.
+      condition     = can(regex("^[0-9]+\\.dkr\\.ecr\\.${var.region}\\.amazonaws\\.com/${local.name}@sha256:[0-9a-f]{64}$", var.image_uri))
+      error_message = "image_uri is not an image digest in the ${local.name} ECR repository in ${var.region}. Run \"npm run aws:build-image\" first (it writes infra/image.auto.tfvars)."
     }
   }
 }
