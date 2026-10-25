@@ -10,10 +10,10 @@ export function SaleChip({ event }) {
   );
 }
 
-export function EventCard({ event }) {
+export function EventCard({ event, index = 0 }) {
   const open = isSaleOpen(event);
   return (
-    <li>
+    <li style={{ '--i': index }}>
       <Link to={`/events/${event.id}`} className="event-card">
         <Poster event={event} />
         <div className="event-card-body">

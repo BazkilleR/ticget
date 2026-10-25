@@ -149,7 +149,7 @@ npm run aws:destroy                                     # delete the stack when 
   Add `SEED_DEMO=1` for a week of paid bookings on the sales dashboard.
 - To seed by hand: `ADMIN_PASSWORD=... npm run aws:seed` (`-- --demo` adds demo sales, `-- --force` wipes a
   database that has data, `-- --demo-only` just adds demo sales).
-- The app image goes to the ECR repository `ticket-backend`, created on the first deploy and kept by
+- The app image goes to the ECR repository `ticget-backend`, created on the first deploy and kept by
   `aws:destroy`, so later deploys only push the layers that changed. EC2 pulls it through VPC endpoints (no NAT).
 - The API URL is printed at the end of the deploy as `ApiUrl`; later, `terraform -chdir=infra output -raw ApiUrl`.
   `<ApiUrl>/health` should answer `{ "ok": true, ... }`.

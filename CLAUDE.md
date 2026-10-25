@@ -1,4 +1,4 @@
-# Ticket Booking Backend
+# Ticget Backend
 
 ระบบจองตั๋วคอนเสิร์ต/อีเวนต์แบบ **เลือกโซน** (ไม่ระบุเลขที่นั่ง) ทำเฉพาะ **backend** ด้วย Express.js
 พัฒนาและทดสอบบน local ทั้งหมดด้วย Docker ก่อน แล้วค่อย deploy ขึ้น AWS ในเฟสสุดท้าย
@@ -57,7 +57,7 @@ Cleanup script (src/jobs/expire.js) ─ รันเป็นระยะ ─►
 ## โครงสร้างโปรเจกต์
 
 ```
-ticket-backend/
+ticget-backend/
 ├─ docker-compose.yml
 ├─ .env.example
 ├─ package.json
@@ -410,7 +410,7 @@ ADMIN_PASSWORD=change-me-admin-password    # ห้าม commit ค่าจร
 - Dockerfile เดียว ใช้รันได้ทั้ง `node src/api.js` และ `node src/worker.js`
 - IaC ด้วย Terraform (`infra/*.tf`, state อยู่ในเครื่องที่ `infra/terraform.tfstate` ห้าม commit เพราะมี secret): VPC 2 AZ, RDS PostgreSQL, ElastiCache Redis, SQS FIFO + DLQ, ALB (internal) + EC2 ASG สำหรับ API, EC2 ASG สำหรับ worker (scale ตามจำนวน message ในคิว), API Gateway + VPC Link, Lambda + EventBridge Scheduler สำหรับ cleanup, Secrets Manager, VPC Endpoints สำหรับ SQS, Secrets Manager, CloudWatch Logs, ECR (interface) และ S3 (gateway)
 - `ADMIN_PASSWORD=... npm run aws:deploy` seed ข้อมูลตัวอย่าง + admin ให้เองผ่าน EC2 Instance Connect (ไม่ต้อง tunnel) เฉพาะตอน DB ยังไม่มี users จึง deploy ซ้ำได้โดยข้อมูลไม่หาย
-- image ของแอปอยู่ใน ECR repository `ticket-backend` ที่ `npm run aws:build-image` สร้างนอก Terraform (ไม่ถูกลบตอน `aws:destroy`) และเขียน digest ลง `infra/image.auto.tfvars`
+- image ของแอปอยู่ใน ECR repository `ticget-backend` ที่ `npm run aws:build-image` สร้างนอก Terraform (ไม่ถูกลบตอน `aws:destroy`) และเขียน digest ลง `infra/image.auto.tfvars`
 - ตั้ง AWS Budget alert ก่อน deploy
 - ✅ เสร็จเมื่อ: รัน integration test และ load test กับ URL บน AWS แล้วผ่าน
 

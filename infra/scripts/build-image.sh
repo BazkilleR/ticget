@@ -8,8 +8,8 @@
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
-REPO=ticket-backend
-LOCAL_TAG=ticket-backend:aws
+REPO=ticget-backend
+LOCAL_TAG=ticget-backend:aws
 
 if ! aws ecr describe-repositories --region "$REGION" --repository-names "$REPO" >/dev/null 2>&1; then
   aws ecr create-repository --region "$REGION" --repository-name "$REPO" \

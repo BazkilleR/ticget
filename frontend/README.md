@@ -1,4 +1,4 @@
-# Ticket Booking web UI
+# Ticget web UI
 
 React SPA (Vite) for the backend in the repo root. It always calls the API at `/api/*` on its own origin,
 so the backend needs no CORS:

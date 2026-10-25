@@ -1,8 +1,8 @@
 {
-  "name": "ticket-frontend",
+  "name": "ticget-frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "Web UI for the zone-based ticket booking backend",
+  "description": "Web UI for the Ticget zone-based ticket booking backend",
   "type": "module",
   "scripts": {
     "dev": "vite",

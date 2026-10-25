@@ -24,6 +24,11 @@
   --series-2: #eb6834;
   --shadow: 0 1px 2px rgb(0 0 0 / 5%), 0 6px 20px rgb(0 0 0 / 6%);
   --radius: 12px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur: 250ms;
+  --dur-enter: 420ms;
   --head-font: 'Kanit', 'IBM Plex Sans Thai', system-ui, sans-serif;
   font-family: 'IBM Plex Sans Thai', system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.55;
@@ -88,6 +93,39 @@ a {
 
 .site-main {
   flex: 1;
+}
+
+/* Each route mounts a new root element, so this plays on every page change. `backwards` (not `both`) so no
+   transform is left behind afterwards to break position: fixed/sticky inside the page. */
+.site-main > *,
+.admin-nav ~ * {
+  animation: rise-in var(--dur-enter) var(--ease-out) backwards;
+}
+
+/* List items carry their position in --i; the delay stops growing after 10 so long lists don't drag. */
+.stagger > * {
+  animation: rise-in var(--dur-enter) var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 10) * 45ms);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 
 .wrap {
@@ -170,6 +208,11 @@ a {
   background: var(--brand);
   color: #fff;
   transform: rotate(-8deg);
+  transition: transform var(--dur) var(--ease-spring);
+}
+
+.brand:hover .brand-mark {
+  transform: rotate(0deg) scale(1.08);
 }
 
 .brand-text {
@@ -180,7 +223,6 @@ a {
 }
 
 .brand-text b {
-  color: var(--brand);
   font-weight: 700;
 }
 
@@ -213,6 +255,7 @@ a {
 }
 
 .menubar a {
+  position: relative;
   color: #fff;
   text-decoration: none;
   font-family: var(--head-font);
@@ -220,6 +263,28 @@ a {
   padding: 0.6rem 1rem;
   white-space: nowrap;
   border-bottom: 3px solid transparent;
+  transition: background var(--dur) var(--ease-out);
+}
+
+/* Active underline for the menubar, admin menu and tabs: grows out from the centre instead of snapping on. */
+.menubar a::after,
+.admin-nav a::after,
+.tabs button::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 3px;
+  background: currentColor;
+  transform: scaleX(0);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.menubar a.active::after,
+.admin-nav a.active::after,
+.tabs button.active::after {
+  transform: scaleX(1);
 }
 
 .menubar a:hover {
@@ -228,7 +293,6 @@ a {
 
 .menubar a.active {
   background: var(--brand-dark);
-  border-bottom-color: #fff;
 }
 
 .header-search {
@@ -242,10 +306,14 @@ a {
   border-radius: 999px;
   padding: 0 0.9rem;
   color: #9a9aa6;
+  transition:
+    border-color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
 
 .header-search:focus-within {
   border-color: var(--brand);
+  box-shadow: 0 0 0 4px rgb(229 32 46 / 20%);
 }
 
 .header-search input {
@@ -299,7 +367,12 @@ a {
   padding: 0.55rem 1.1rem;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    border-color var(--dur-fast),
+    box-shadow var(--dur) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
 .btn:disabled {
@@ -314,6 +387,8 @@ a {
 
 .btn-primary:hover:not(:disabled) {
   background: var(--brand-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgb(229 32 46 / 30%);
 }
 
 .btn-outline {
@@ -344,6 +419,10 @@ a {
 .btn-lg {
   padding: 0.75rem 1.5rem;
   font-size: 1.1rem;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .btn-block {
@@ -412,6 +491,7 @@ a {
   border-radius: 10px;
   padding: 0.75rem 1rem;
   margin: 1rem 0;
+  animation: pop-in var(--dur) var(--ease-out) backwards;
 }
 
 .banner-error {
@@ -436,6 +516,8 @@ a {
   gap: 0.6rem;
   color: var(--muted);
   padding: 2.5rem 0;
+  /* Fast loads finish before the spinner shows, so it doesn't flash. */
+  animation: fade-in var(--dur) var(--ease-out) 200ms backwards;
 }
 
 .spinner-ring {
@@ -478,6 +560,7 @@ a {
   border-radius: 50%;
   background: radial-gradient(circle, rgb(255 255 255 / 45%), transparent 65%);
   z-index: -1;
+  transition: transform 0.6s var(--ease-out);
 }
 
 .poster-rings {
@@ -492,6 +575,7 @@ a {
     0 0 0 18px rgb(255 255 255 / 6%),
     0 0 0 40px rgb(255 255 255 / 4%);
   z-index: -1;
+  transition: transform 0.6s var(--ease-out);
 }
 
 .poster-date {
@@ -586,11 +670,48 @@ a {
 .hero-poster {
   display: block;
   text-decoration: none;
-  transition: transform 0.2s;
+  transition: transform var(--dur) var(--ease-out);
 }
 
 .hero-poster:hover {
   transform: translateY(-3px);
+}
+
+.hero-poster .poster {
+  animation: float 6s ease-in-out infinite;
+}
+
+.hero-poster .poster-glow {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes glow-pulse {
+  50% {
+    opacity: 0.6;
+    transform: scale(1.12);
+  }
+}
+
+.hero-info > * {
+  animation: rise-in var(--dur-enter) var(--ease-out) backwards;
+}
+
+.hero-info > :nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.hero-info > :nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.hero-info > :nth-child(4) {
+  animation-delay: 180ms;
 }
 
 .hero-info {
@@ -647,12 +768,19 @@ a {
   color: inherit;
   text-decoration: none;
   overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
 
 .event-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 28px rgb(0 0 0 / 14%);
+}
+
+.event-card:hover .poster-glow,
+.event-card:hover .poster-rings {
+  transform: scale(1.08);
 }
 
 .event-card .poster {
@@ -723,6 +851,14 @@ a {
   border-radius: 999px;
   padding: 0.3rem 0.9rem;
   text-decoration: none;
+  transition:
+    border-color var(--dur-fast),
+    color var(--dur-fast),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.filter-chip:active {
+  transform: scale(0.96);
 }
 
 .filter-chip:hover {
@@ -1025,7 +1161,11 @@ a {
   border: 3px solid transparent;
   border-radius: 10px 10px 30px 30px / 10px 10px 16px 16px;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  transition:
+    transform var(--dur) var(--ease-spring),
+    box-shadow var(--dur) var(--ease-out),
+    filter var(--dur-fast),
+    border-color var(--dur-fast);
 }
 
 .map-zone strong {
@@ -1074,7 +1214,14 @@ a {
   border-radius: 10px;
   cursor: pointer;
   position: relative;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color var(--dur-fast),
+    background var(--dur-fast),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.price-row:active:not(.disabled) {
+  transform: scale(0.99);
 }
 
 .price-row input {
@@ -1247,6 +1394,26 @@ a {
   border-radius: var(--radius);
   font-family: var(--head-font);
   font-size: 1.05rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* A faint light sweeping across, so the countdown reads as live. */
+.timer-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 7%) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  60%,
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .countdown {
@@ -1269,8 +1436,21 @@ a {
   border-top: 6px solid var(--brand);
 }
 
+.ticket {
+  transition: border-color var(--dur) var(--ease-out);
+}
+
+/* Plays once when the booking turns CONFIRMED (the class changes on the same element). */
 .ticket-confirmed {
   border-top-color: var(--success);
+  animation: stamp 0.5s var(--ease-spring);
+}
+
+@keyframes stamp {
+  40% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 6px var(--success-soft), var(--shadow);
+  }
 }
 
 .ticket-expired,
@@ -1540,14 +1720,22 @@ a {
   border-bottom: 3px solid transparent;
   color: var(--muted);
   cursor: pointer;
+  position: relative;
+  transition: color var(--dur-fast);
+}
+
+.tabs button:hover {
+  color: var(--text);
 }
 
 .tabs button.active {
   color: var(--brand);
-  border-bottom-color: var(--brand);
 }
 
 .tab-count {
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast);
   font-size: 0.75rem;
   min-width: 1.4rem;
   padding: 0 0.35rem;
@@ -1581,12 +1769,16 @@ a {
   color: inherit;
   text-decoration: none;
   border-left: 4px solid transparent;
-  transition: border-color 0.15s, transform 0.15s;
+  transition:
+    border-color var(--dur-fast),
+    transform var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
 
 .booking-item:hover {
   border-left-color: var(--brand);
-  transform: translateX(2px);
+  transform: translateX(3px);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 10%);
 }
 
 .booking-item-body {
@@ -1692,11 +1884,16 @@ textarea:focus {
   padding: 0.6rem 1rem;
   margin-bottom: -2px;
   border-bottom: 3px solid transparent;
+  position: relative;
+  transition: color var(--dur-fast);
+}
+
+.admin-nav a:hover {
+  color: var(--text);
 }
 
 .admin-nav a.active {
   color: var(--brand);
-  border-bottom-color: var(--brand);
 }
 
 .admin-form {

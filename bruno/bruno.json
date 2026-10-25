@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "name": "Ticket Booking",
+  "name": "Ticget",
   "type": "collection",
   "ignore": ["node_modules", ".git"]
 }

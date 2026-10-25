@@ -17,12 +17,12 @@ import AdminCheckIn from './pages/admin/AdminCheckIn';
 
 function Logo() {
   return (
-    <Link to="/" className="brand" aria-label="Ticket Booking หน้าแรก">
+    <Link to="/" className="brand" aria-label="Ticget หน้าแรก">
       <span className="brand-mark">
         <Icon name="ticket" size={20} />
       </span>
       <span className="brand-text">
-        TICKET<b>BOOKING</b>
+        TIC<b>GET</b>
       </span>
     </Link>
   );
@@ -154,7 +154,7 @@ export default function App() {
       <footer className="site-footer">
         <div className="wrap footer-inner">
           <Logo />
-          <p>จำกัด 4 ใบต่อคนต่ออีเวนต์ · ชำระเงินภายใน 10 นาทีหลังจองสำเร็จ</p>
+          <p>© 2026 Ratchaphon Khawkhiew</p>
         </div>
       </footer>
     </div>

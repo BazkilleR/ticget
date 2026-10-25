@@ -1,8 +1,8 @@
 {
-  "name": "ticket-backend",
+  "name": "ticget-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "Zone-based concert/event ticket booking backend",
+  "description": "Ticget: zone-based concert/event ticket booking backend",
   "main": "src/api.js",
   "engines": {
     "node": ">=20"

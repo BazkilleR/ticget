@@ -77,7 +77,7 @@ IMAGE="$(docker inspect --format '{{.Config.Image}}' app)"
 # The image sets NODE_ENV=production, which the seed scripts refuse. This stack is a test environment, and the
 # empty-database check below is what keeps a seed from wiping real data.
 run() {
-  docker run --rm --network host --env-file /etc/ticket/base.env --env-file /etc/ticket/secrets.env \
+  docker run --rm --network host --env-file /etc/ticget/base.env --env-file /etc/ticget/secrets.env \
     -e NODE_ENV=development -e ADMIN_USERNAME -e ADMIN_PASSWORD "$IMAGE" "$@"
 }
 

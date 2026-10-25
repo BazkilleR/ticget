@@ -14,7 +14,7 @@ resource "random_password" "jwt" {
 
 resource "aws_secretsmanager_secret" "db" {
   name_prefix             = "${local.name}-db-"
-  description             = "RDS credentials for the ticket backend"
+  description             = "RDS credentials for the Ticget backend"
   recovery_window_in_days = 0 # delete right away on destroy
 }
 
@@ -32,7 +32,7 @@ resource "aws_secretsmanager_secret_version" "db" {
 
 resource "aws_secretsmanager_secret" "jwt" {
   name_prefix             = "${local.name}-jwt-"
-  description             = "JWT signing secret for the ticket backend"
+  description             = "JWT signing secret for the Ticget backend"
   recovery_window_in_days = 0
 }
 
