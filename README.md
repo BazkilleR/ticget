@@ -104,10 +104,38 @@ To test hold expiry quickly, set `BOOKING_HOLD_MINUTES=0.25` (15 seconds) in `.e
 | What | Command | Needs |
 |---|---|---|
 | Integration tests | `npm test` | only `docker compose up -d`; tests use their own database, Redis DB and queue |
-| Load test (k6) | `npm run load:prepare` → `npm run load:run` → `npm run load:verify` | API and worker running |
+| Load test (k6) | `npm run load:prepare` → `cd load && k6 run booking-rush.js` → `npm run load:verify` | API and worker running, [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) installed |
 | Manual / API | open the `bruno/` folder in Bruno, or `cd bruno && npx @usebruno/cli run --env local` | API and worker running; set `adminPassword` in the environment |
 
+`npm run load:run` runs k6 in Docker instead of a local install. Avoid it on WSL2 + Docker Desktop: the
+container cannot reach the API on WSL's localhost, and through `host.docker.internal` Docker's port relay drops
+part of the requests, which looks like a failed load test when the API never saw them. Run k6 natively there.
+
+### Load test on AWS
+
+`load:prepare` and `load:verify` talk to the database directly, so they go through a tunnel; k6 calls the
+public API URL.
+
+```bash
+npm run aws:tunnel                                # terminal 1, keep it open: RDS on :15432, Redis on :16379
+eval "$(npm run -s aws:env)"                      # terminal 2: point the scripts at AWS, also sets API_URL
+npm run load:prepare
+(cd load && k6 run -e BASE_URL="$API_URL" booking-rush.js)
+npm run load:verify                               # 100 PENDING, the rest SOLD_OUT, zones.reserved = 100
+```
+
+For Bruno on AWS, set `baseUrl` in [`bruno/environments/aws.bru`](bruno/environments/aws.bru) to the API URL
+without the trailing `/` (it changes with every fresh stack), then `cd bruno && npx @usebruno/cli run --env aws`.
+
 ## Deploy to AWS
+
+Before the first deploy:
+
+- Install Terraform ≥ 1.9, Docker and AWS CLI v2, and sign the CLI in to the account (`aws sts get-caller-identity`
+  should work).
+- `ap-southeast-7` (Thailand) is an opt-in region: enable it under **Account → AWS Regions** first, or the
+  deploy fails.
+- Set an AWS Budget alert in the Billing console, so a forgotten stack does not run up costs.
 
 ```bash
 npm run aws:init                                        # once: download the Terraform providers
@@ -123,8 +151,10 @@ npm run aws:destroy                                     # delete the stack when 
   database that has data, `-- --demo-only` just adds demo sales).
 - The app image goes to the ECR repository `ticket-backend`, created on the first deploy and kept by
   `aws:destroy`, so later deploys only push the layers that changed. EC2 pulls it through VPC endpoints (no NAT).
-- Needs Terraform ≥ 1.9 and Docker. State is kept locally in `infra/terraform.tfstate` (gitignored, holds the
-  generated secrets): deploy and destroy from the same machine.
+- The API URL is printed at the end of the deploy as `ApiUrl`; later, `terraform -chdir=infra output -raw ApiUrl`.
+  `<ApiUrl>/health` should answer `{ "ok": true, ... }`.
+- State is kept locally in `infra/terraform.tfstate` (gitignored, holds the generated secrets): deploy and
+  destroy from the same machine.
 - Create the Amplify app once in the console (Singapore region). Steps are in [frontend/README.md](frontend/README.md).
 - Every fresh stack gets a new API URL. `aws:deploy` points the Amplify app connected to this repo's GitHub
   remote at it (skipped if there is none); set `AMPLIFY_APP_ID` / `AMPLIFY_REGION` to pick another app.
