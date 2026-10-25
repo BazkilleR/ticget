@@ -210,13 +210,14 @@ export default function EventZones() {
 
             <div className="panel panel-sticky">
               <h2 className="panel-title">ราคาบัตร</h2>
-              <fieldset className="price-list">
+              <fieldset className="price-list stagger">
                 <legend className="sr-only">เลือกโซน</legend>
-                {ranked.map((zone) => {
+                {ranked.map((zone, i) => {
                   const soldOut = zone.available <= 0;
                   return (
                     <label
                       key={zone.zoneId}
+                      style={{ '--i': i }}
                       className={`price-row${selectedZoneId === zone.zoneId ? ' selected' : ''}${soldOut ? ' disabled' : ''}`}
                     >
                       <input

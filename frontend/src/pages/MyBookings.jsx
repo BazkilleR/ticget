@@ -60,9 +60,9 @@ export default function MyBookings() {
           </Link>
         </div>
       )}
-      <ul className="booking-list">
-        {shown?.map((b) => (
-          <li key={b.bookingId}>
+      <ul className="booking-list stagger">
+        {shown?.map((b, i) => (
+          <li key={b.bookingId} style={{ '--i': i }}>
             <Link
               to={b.status === 'CONFIRMED' ? `/bookings/${b.bookingId}/tickets` : `/bookings/${b.bookingId}`}
               className="booking-item"

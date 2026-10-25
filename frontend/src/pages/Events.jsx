@@ -77,9 +77,9 @@ export default function Events() {
         <ErrorBanner message={error} />
         {!events && !error && <Spinner />}
         {events?.length === 0 && <p className="empty">ยังไม่มีอีเวนต์ที่กำลังจะมาถึง</p>}
-        <ul className="event-grid">
-          {events?.map((event) => (
-            <EventCard key={event.id} event={event} />
+        <ul className="event-grid stagger">
+          {events?.map((event, i) => (
+            <EventCard key={event.id} event={event} index={i} />
           ))}
         </ul>
       </section>

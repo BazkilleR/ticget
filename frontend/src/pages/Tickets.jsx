@@ -6,10 +6,10 @@ import { ErrorBanner, Icon, Poster, Spinner } from '../components/common';
 import TicketQr, { groupCode } from '../components/TicketQr';
 import { formatDate, formatDateTime, formatTime } from '../format';
 
-function ETicket({ data, ticket }) {
+function ETicket({ data, ticket, index }) {
   const used = Boolean(ticket.checkedInAt);
   return (
-    <article className={`eticket${used ? ' eticket-used' : ''}`}>
+    <article className={`eticket${used ? ' eticket-used' : ''}`} style={{ '--i': index }}>
       <header className="eticket-head">
         <Poster event={{ id: data.event.id, name: data.event.name }} variant="mini" />
         <div>
@@ -96,9 +96,9 @@ export default function Tickets() {
       {data?.tickets.length > 0 && (
         <>
           <p className="fine-print no-print">แสดง QR code ที่หน้างาน 1 ใบต่อ 1 ท่าน · ห้ามเผยแพร่ภาพบัตร ใครสแกนก่อนจะเข้างานได้ก่อน</p>
-          <div className="eticket-list">
-            {data.tickets.map((ticket) => (
-              <ETicket key={ticket.ticketId} data={data} ticket={ticket} />
+          <div className="eticket-list stagger">
+            {data.tickets.map((ticket, i) => (
+              <ETicket key={ticket.ticketId} data={data} ticket={ticket} index={i} />
             ))}
           </div>
         </>

@@ -156,9 +156,9 @@ export default function Search() {
           {results.length === 0 ? (
             <p className="empty">ไม่พบงานแสดงที่ตรงกับการค้นหา</p>
           ) : (
-            <ul className="event-grid">
-              {results.map((event) => (
-                <EventCard key={event.id} event={event} />
+            <ul className="event-grid stagger">
+              {results.map((event, i) => (
+                <EventCard key={event.id} event={event} index={i} />
               ))}
             </ul>
           )}
