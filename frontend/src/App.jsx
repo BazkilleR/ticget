@@ -154,7 +154,7 @@ export default function App() {
       <footer className="site-footer">
         <div className="wrap footer-inner">
           <Logo />
-          <p>จำกัด 4 ใบต่อคนต่ออีเวนต์ · ชำระเงินภายใน 10 นาทีหลังจองสำเร็จ</p>
+          <p>© 2026 Ratchaphon Khawkhiew</p>
         </div>
       </footer>
     </div>
