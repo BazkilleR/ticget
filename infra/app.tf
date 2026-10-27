@@ -159,9 +159,9 @@ resource "aws_autoscaling_group" "app" {
   for_each            = local.tiers
   name_prefix         = "${local.name}-${each.key}-"
   vpc_zone_identifier = aws_subnet.private[*].id
-  # One instance per AZ at all times (the ASG balances launches across AZs), so losing an AZ never leaves a
-  # tier with nothing running while a replacement boots.
-  min_size = 2
+  # The API keeps one instance per AZ at all times (the ASG balances launches across AZs), so losing an AZ
+  # never stops bookings while a replacement boots. One worker is enough: if its AZ fails, messages wait in SQS.
+  min_size = each.key == "api" ? 2 : 1
   max_size = 4
 
   # Boot (install Docker, pull the image, migrate) takes a few minutes before /health can pass.

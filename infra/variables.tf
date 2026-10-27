@@ -4,7 +4,7 @@ variable "region" {
   default     = "ap-southeast-7"
 }
 
-# Everything survives the loss of one AZ (RDS Multi-AZ, endpoints and instances in both AZs) but is otherwise
+# Everything survives the loss of one AZ (RDS Multi-AZ, endpoints in both AZs, an API instance per AZ) but is otherwise
 # sized for the lowest cost and torn down with `npm run aws:destroy` after each test session.
 #
 #   Internet -> API Gateway (HTTP API, throttled) -> VPC Link -> internal ALB -> API ASG (EC2)
