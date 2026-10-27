@@ -159,8 +159,10 @@ resource "aws_autoscaling_group" "app" {
   for_each            = local.tiers
   name_prefix         = "${local.name}-${each.key}-"
   vpc_zone_identifier = aws_subnet.private[*].id
-  min_size            = 1
-  max_size            = 2
+  # High availability keeps one instance per AZ at all times (the ASG balances launches across AZs), so losing
+  # an AZ never leaves a tier with nothing running while a replacement boots.
+  min_size = var.high_availability ? 2 : 1
+  max_size = var.high_availability ? 4 : 2
 
   # Boot (install Docker, pull the image, migrate) takes a few minutes before /health can pass.
   target_group_arns         = each.key == "api" ? [aws_lb_target_group.api.arn] : []
