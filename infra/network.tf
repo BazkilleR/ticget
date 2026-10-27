@@ -1,7 +1,6 @@
 # No NAT gateway: subnets are isolated. Instances reach AWS services through VPC endpoints: S3 (gateway,
 # free: Amazon Linux packages + the ECR image layers), SQS, Secrets Manager, CloudWatch Logs and ECR
-# (interface, billed per AZ: in one AZ to halve that cost, or both AZs with var.high_availability so instances
-# in either AZ can still boot and reach SQS when the other one fails).
+# (interface, in both AZs so instances in either AZ can still boot and reach SQS when the other one fails).
 
 data "aws_availability_zones" "available" {
   state = "available"
@@ -45,7 +44,7 @@ resource "aws_vpc_endpoint" "interface" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.region}.${each.key}"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.high_availability ? aws_subnet.private[*].id : [aws_subnet.private[0].id]
+  subnet_ids          = aws_subnet.private[*].id
   security_group_ids  = [aws_security_group.sg["endpoints"].id]
   private_dns_enabled = true
   tags                = { Name = "${local.name}-${each.key}" }
@@ -53,7 +52,7 @@ resource "aws_vpc_endpoint" "interface" {
 
 # EC2 Instance Connect Endpoint (no hourly charge): SSH to the private instances for debugging, and an
 # SSH tunnel to RDS/Redis for migrations, seeding and load-test setup (npm run aws:tunnel). One per VPC; it
-# reaches instances in either AZ, so high availability leaves it alone (only debugging needs it).
+# reaches instances in either AZ, so it stays in one (only debugging and seeding need it).
 resource "aws_ec2_instance_connect_endpoint" "eic" {
   subnet_id          = aws_subnet.private[0].id
   security_group_ids = [aws_security_group.sg["eic"].id]

@@ -151,11 +151,9 @@ npm run aws:destroy                                     # delete the stack when 
   database that has data, `-- --demo-only` just adds demo sales).
 - The app image goes to the ECR repository `ticget-backend`, created on the first deploy and kept by
   `aws:destroy`, so later deploys only push the layers that changed. EC2 pulls it through VPC endpoints (no NAT).
-- By default the stack does not survive the loss of an AZ: a single-AZ RDS, VPC endpoints in one AZ and one
-  instance per tier. `TF_VAR_high_availability=true` before `aws:deploy` (or
-  `aws:plan`) turns on RDS Multi-AZ, puts the endpoints in both AZs and keeps an API and a worker instance in each
-  AZ (2–4 per tier). It roughly doubles the hourly cost; switching an existing stack takes a few minutes for RDS.
-  Redis stays one node either way: the app falls back to the database when it is gone.
+- The stack survives the loss of one AZ: RDS Multi-AZ (synchronous standby, automatic failover), VPC endpoints
+  in both AZs, and an API and a worker instance in each AZ (2–4 per tier). Redis is one node: the app falls back
+  to the database when it is gone.
 - The API URL is printed at the end of the deploy as `ApiUrl`; later, `terraform -chdir=infra output -raw ApiUrl`.
   `<ApiUrl>/health` should answer `{ "ok": true, ... }`.
 - State is kept locally in `infra/terraform.tfstate` (gitignored, holds the generated secrets): deploy and

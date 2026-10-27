@@ -18,7 +18,7 @@ resource "aws_db_instance" "db" {
   password                 = random_password.db.result
   db_subnet_group_name     = aws_db_subnet_group.db.name
   vpc_security_group_ids   = [aws_security_group.sg["db"].id]
-  multi_az                 = var.high_availability # synchronous standby in the other AZ, automatic failover
+  multi_az                 = true # synchronous standby in the other AZ, automatic failover
   publicly_accessible      = false
   backup_retention_period  = 1
   delete_automated_backups = true
